@@ -3,6 +3,7 @@ mod ms_chap_v2;
 mod radius_utils;
 
 
+use std::borrow::Cow;
 use std::collections::hash_map::Entry;
 use std::collections::HashMap;
 use std::fmt::{Display, Formatter};
@@ -22,6 +23,12 @@ use crate::authentication::Authenticator;
 use crate::settings::RadiusAuthenticatorSettings;
 
 
+/// This user name prefix is used as a marker for SNI-based authentication procedure.
+/// In this case we only have mixed credentials and cannot separate the user
+/// name from them.
+const SNI_AUTHENTICATION_USER_NAME_PREFIX: &str = "sni";
+
+
 pub(crate) struct RadiusAuthenticator {
     settings: Arc<RadiusAuthenticatorSettings>,
     state: Arc<Mutex<State>>,
@@ -30,7 +37,7 @@ pub(crate) struct RadiusAuthenticator {
 pub(crate) struct State {
     sessions: HashMap<SessionKey, Session>,
     cache: TimedSizedCache<SessionKey, authentication::Status>,
-    auth_id: eap::Identifier,
+    auth_id: std::iter::Cycle<std::ops::RangeInclusive<eap::Identifier>>,
 }
 
 #[derive(Clone)]
@@ -71,7 +78,7 @@ impl RadiusAuthenticator {
             state: Arc::new(Mutex::new(State {
                 sessions: Default::default(),
                 cache,
-                auth_id: 0,
+                auth_id: (0..=eap::Identifier::MAX).cycle(),
             })),
         }
     }
@@ -107,24 +114,11 @@ impl Authenticator for RadiusAuthenticator {
                     let source = source.clone().into_owned();
                     let log_id = log_id.clone();
                     async move {
-                        let user_name =
-                            match &source {
-                                authentication::Source::Sni(x) => x,
-                                authentication::Source::ProxyBasic(_) => todo!(),
-                            };
-                        let password = todo!();
-
                         let authenticate = Session::authenticate(
                             &settings,
-                            user_name.as_ref(),
-                            password,
-                            {
-                                let mut state = state.lock().unwrap();
-                                let x = state.auth_id;
-                                state.auth_id += 1;
-                                x
-                            },
-                            &log_id,
+                            source.clone(),
+                            state.lock().unwrap().auth_id.next().unwrap(),
+                            log_id,
                         );
 
                         let status = match tokio::time::timeout(settings.timeout, authenticate).await {
@@ -231,11 +225,38 @@ impl Session {
 
     async fn authenticate(
         settings: &RadiusAuthenticatorSettings,
-        user_name: &str,
-        password: &str,
+        source: authentication::Source<'static>,
         auth_id: eap::Identifier,
-        log_id: &log_utils::IdChain<u64>,
+        log_id: log_utils::IdChain<u64>,
     ) -> Result<authentication::Status, AuthenticationError> {
+        let (user_name, password) = match source {
+            authentication::Source::Sni(x) => (
+                Cow::from(format!(
+                    "{}@{}@{}",
+                    SNI_AUTHENTICATION_USER_NAME_PREFIX,
+                    auth_id,
+                    x.chars().take(6).collect::<String>(),
+                )),
+                x,
+            ),
+            authentication::Source::ProxyBasic(x) => {
+                let credentials = base64::decode(x.as_ref())
+                    .map_err(|e| e.to_string())
+                    .and_then(|x| String::from_utf8(x).map_err(|e| e.to_string()))
+                    .map_err(AuthenticationError::Other)?;
+
+                let mut split = credentials.splitn(2, ':');
+                (
+                    Cow::from(String::from(split.next().unwrap())),
+                    Cow::from(split.next().map(String::from)
+                        .ok_or_else(|| AuthenticationError::Other(
+                            "Expected colon-separated credentials".to_owned()
+                        ))?
+                    ),
+                )
+            }
+        };
+
         let client = Client::new(None, None);
 
         log_id!(trace, log_id, "Sending EAP Identity to initiate procedure");
@@ -248,7 +269,7 @@ impl Session {
                 &user_name,
                 &eap::encode_response(auth_id, eap::TYPE_IDENTITY, b"hello"),
             ),
-            log_id,
+            &log_id,
         ).await?;
 
         let ms_chap_challenge = match &eap_request.payload {
@@ -264,7 +285,7 @@ impl Session {
         log_id!(trace, log_id, "Received MS-CHAPv2 challenge");
 
         log_id!(trace, log_id, "Sending MS-CHAPv2 response packet for authentication");
-        let ms_chap_response = ms_chap_challenge.generate_response(&user_name, password);
+        let ms_chap_response = ms_chap_challenge.generate_response(&user_name, &password);
         let eap_request = Self::exchange_challenge_phase(
             &client,
             &settings.server_address,
@@ -274,7 +295,7 @@ impl Session {
                 &user_name,
                 &eap::encode_response(eap_request.identifier, eap::TYPE_MS_AUTH, &ms_chap_response.encode()),
             ),
-            log_id,
+            &log_id,
         ).await?;
 
         let ms_chap_success_request = match &eap_request.payload {
@@ -290,7 +311,7 @@ impl Session {
         log_id!(trace, log_id, "Received MS-CHAPv2 success request");
 
         if !ms_chap_v2::check_authenticator_response(
-            password,
+            &password,
             &ms_chap_response.nt_response,
             &ms_chap_response.peer_challenge,
             &ms_chap_challenge.challenge,
@@ -314,7 +335,7 @@ impl Session {
                     &ms_chap_v2::SuccessResponse::encode(),
                 ),
             ),
-            log_id,
+            &log_id,
         ).await?;
 
         if radius_reply.get_code() != Code::AccessAccept {

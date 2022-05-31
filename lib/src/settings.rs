@@ -499,7 +499,7 @@ impl IcmpSettings {
 }
 
 impl MetricsSettings {
-    fn builder() -> MetricsSettingsBuilder {
+    pub fn builder() -> MetricsSettingsBuilder {
         MetricsSettingsBuilder::new()
     }
 

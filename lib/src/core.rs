@@ -78,7 +78,10 @@ impl Core {
                 .map_err(|e| io::Error::new(e.kind(), format!("ICMP listener failure: {}", e)))
         };
 
-        let listen_metrics = metrics::listen(self.context.clone(), log_utils::IdChain::empty());
+        let listen_metrics = async {
+            metrics::listen(self.context.clone(), log_utils::IdChain::empty()).await
+                .map_err(|e| io::Error::new(e.kind(), format!("Metrics listener failure: {}", e)))
+        };
 
         let (mut shutdown_notification, _shutdown_completion) = {
             let shutdown = self.context.shutdown.lock().unwrap();
