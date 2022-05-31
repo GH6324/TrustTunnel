@@ -2,7 +2,6 @@ use std::collections::{HashMap, HashSet};
 use std::io;
 use std::io::ErrorKind;
 use std::net::SocketAddr;
-use std::pin::Pin;
 use std::sync::Arc;
 use std::sync::atomic::{AtomicU64, Ordering};
 use std::time::Duration;
@@ -24,7 +23,7 @@ const MUX_ID_FMT: &str = "QMUX={}";
 const SOCKET_ID_FMT: &str = "QSOCK={}";
 const QUIC_CONNECTION_CLOSE_CODE: u64 = 0x42;
 
-type QuicConnection = Pin<Box<quiche::Connection>>;
+type QuicConnection = quiche::Connection;
 
 
 pub(crate) struct QuicMultiplexer {
@@ -722,10 +721,11 @@ impl QuicSocket {
                 log_id!(trace, self.id, "Stream reset by client: id={}, err={}", stream_id, err);
                 Ok(Some(QuicSocketEvent::Close(stream_id)))
             }
-            Ok((_flow_id, h3::Event::Datagram)) => Err(io::Error::new(
+            Ok((_, h3::Event::Datagram)) => Err(io::Error::new(
                 ErrorKind::Other, "Received unexpected datagram frame"
             )),
-            Ok((_goaway_id, h3::Event::GoAway)) => Err(io::Error::new(
+            Ok((_, h3::Event::PriorityUpdate)) => Ok(None),
+            Ok((_, h3::Event::GoAway)) => Err(io::Error::new(
                 ErrorKind::UnexpectedEof, "Received GOAWAY"
             )),
             Err(h3::Error::Done) => Ok(None),
