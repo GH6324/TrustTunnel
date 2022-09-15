@@ -9,7 +9,7 @@ increment_version() {
   echo ${major}.${minor}.$((revision+1))
 }
 
-VERSION=$(cat ./src/main.rs | grep "const VERSION_STRING" | tail -n 1 | sed -e 's/const VERSION_STRING: &str = "\(.*\)";/\1/')
+VERSION=$(cat Cargo.toml | grep "version = " | head -n 1 | sed -e 's/version = "\(.*\)"/\1/')
 
 argument_version=$1
 if [ -z "$argument_version" ]
@@ -30,7 +30,7 @@ echo "New version is ${NEW_VERSION}"
 
 set -x
 
-sed -i -e "s/^const VERSION_STRING: \&str = \".*\";$/const VERSION_STRING: \&str = \"${NEW_VERSION}\";/" src/main.rs
+sed -i -e "s/^version = \"${VERSION}\"$/version = \"${NEW_VERSION}\"/" Cargo.toml
 
 # Update changelog
 sed -i -e '3{s/##/##/;t;s/^/## '${NEW_VERSION}'\n\n/}' CHANGELOG.md

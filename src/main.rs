@@ -7,7 +7,7 @@ use vpn_libs_endpoint::core::Core;
 use vpn_libs_endpoint::settings::Settings;
 use vpn_libs_endpoint::shutdown::Shutdown;
 
-const VERSION_STRING: &str = "0.9.14";
+const VERSION_STRING: &str = env!("CARGO_PKG_VERSION");
 
 const VERSION_PARAM_NAME: &str = "v_e_r_s_i_o_n_do_not_change_this_name_it_will_break";
 const LOG_LEVEL_PARAM_NAME: &str = "log_level";
@@ -19,6 +19,9 @@ const SENTRY_DSN_PARAM_NAME: &str = "sentry_dsn";
 fn main() {
     let args = clap::Command::new("VPN endpoint")
         .args(&[
+            // Built-in version parameter handling is deficient in that it
+            // outputs `<program name> <version>` instead of just `<version>`
+            // and also uses `-V` instead of `-v` as the shorthand.
             clap::Arg::new(VERSION_PARAM_NAME)
                 .short('v')
                 .long("version")
