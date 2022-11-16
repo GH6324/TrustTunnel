@@ -95,7 +95,7 @@ impl Tunnel {
     async fn listen_inner(&mut self) -> io::Result<()> {
         loop {
             let request = match tokio::time::timeout(
-                self.context.settings.client_listener_timeout, self.downstream.listen()
+                self.context.settings.client_listener_timeout, self.downstream.listen(),
             ).await {
                 Ok(Ok(None)) => {
                     log_id!(debug, self.id, "Tunnel closed gracefully");
@@ -306,7 +306,8 @@ impl Tunnel {
             Ok(downstream::DatagramPipeHalves::Icmp(dstr_source, dstr_sink)) => {
                 let (fwd_source, fwd_sink) =
                     match forwarder.lock().unwrap().make_icmp_datagram_multiplexer(request_id.clone()) {
-                        Ok(x) => x,
+                        Ok(Some(x)) => x,
+                        Ok(None) => return Err((None, "ICMP forwarding isn't set up", ConnectionError::Other("Not allowed".to_string()))),
                         Err(e) => return Err((None, "Failed to create datagram multiplexer", ConnectionError::Io(e))),
                     };
 
@@ -331,7 +332,7 @@ impl Tunnel {
             Ok(_) => {
                 log_id!(trace, request_id, "Datagram multiplexer gracefully closed");
                 Ok(())
-            },
+            }
             Err(e) => Err((None, "Datagram multiplexer closed with error", ConnectionError::Io(e))),
         }
     }

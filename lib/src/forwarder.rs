@@ -122,10 +122,10 @@ pub(crate) trait Forwarder: Send {
     /// Create an ICMP datagram multiplexer
     fn make_icmp_datagram_multiplexer(
         &self, id: log_utils::IdChain<u64>
-    ) -> io::Result<(
+    ) -> io::Result<Option<(
         Box<dyn datagram_pipe::Source<Output = IcmpDatagram>>,
         Box<dyn datagram_pipe::Sink<Input = downstream::IcmpDatagram>>,
-    )>;
+    )>>;
 }
 
 impl UdpDatagramMeta {

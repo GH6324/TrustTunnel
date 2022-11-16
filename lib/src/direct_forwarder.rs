@@ -60,10 +60,12 @@ impl Forwarder for DirectForwarder {
 
     fn make_icmp_datagram_multiplexer(
         &self, id: log_utils::IdChain<u64>
-    ) -> io::Result<(
+    ) -> io::Result<Option<(
         Box<dyn datagram_pipe::Source<Output = forwarder::IcmpDatagram>>,
         Box<dyn datagram_pipe::Sink<Input = downstream::IcmpDatagram>>,
-    )> {
-        self.context.icmp_forwarder.as_ref().unwrap().make_multiplexer(id)
+    )>> {
+        self.context.icmp_forwarder.as_ref()
+            .map(|x| x.make_multiplexer(id))
+            .transpose()
     }
 }
