@@ -51,10 +51,6 @@ pub enum Socks5Error {
 
 #[derive(Deserialize)]
 pub struct Settings {
-    /// The number of worker threads.
-    /// By default it is set to the number of CPUs on the machine.
-    #[serde(default = "Settings::default_threads_number")]
-    pub(crate) threads_number: usize,
     /// The address to listen on
     #[serde(default = "Settings::default_listen_address")]
     pub(crate) listen_address: SocketAddr,
@@ -434,10 +430,6 @@ impl Settings {
         Ok(())
     }
 
-    fn default_threads_number() -> usize {
-        num_cpus::get()
-    }
-
     fn default_listen_address() -> SocketAddr {
         SocketAddr::from((Ipv4Addr::UNSPECIFIED, 443))
     }
@@ -471,7 +463,6 @@ impl Settings {
 impl Default for Settings {
     fn default() -> Self {
         Self {
-            threads_number: 0,
             listen_address: SocketAddr::from((Ipv4Addr::UNSPECIFIED, 0)),
             tunnel_tls_hosts: Default::default(),
             ping_tls_hosts: Default::default(),
@@ -656,7 +647,6 @@ impl SettingsBuilder {
     fn new() -> Self {
         Self {
             settings: Settings {
-                threads_number: Settings::default_threads_number(),
                 listen_address: Settings::default_listen_address(),
                 tunnel_tls_hosts: Default::default(),
                 ping_tls_hosts: Default::default(),
@@ -684,12 +674,6 @@ impl SettingsBuilder {
         self.settings.validate().map_err(BuilderError::Validation)?;
 
         Ok(self.settings)
-    }
-
-    /// Set the number of worker threads
-    pub fn threads_number(mut self, v: usize) -> Self {
-        self.settings.threads_number = v;
-        self
     }
 
     /// Set the address to listen on

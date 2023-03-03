@@ -40,8 +40,6 @@ The full set of settings is shown bellow in the pseudo-json format:
 
 ```
 {
-  /// The number of worker threads
-  "threads_number": Default(number of CPUs),
   /// The address to listen on
   "listen_address": Default("0.0.0.0:433"),
   /// The TLS hosts for traffic tunneling.

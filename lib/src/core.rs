@@ -85,9 +85,7 @@ impl Core {
     }
 
     /// Run an endpoint instance inside the caller provided asynchronous runtime.
-    /// In this case some of the endpoint settings are ignored as they do not have any sense,
-    /// like [`Settings::threads_number`].
-    pub async fn listen_async(&mut self) -> io::Result<()> {
+    pub async fn listen(&self) -> io::Result<()> {
         let listen_tcp = async {
             self.listen_tcp().await
                 .map_err(|e| io::Error::new(e.kind(), format!("TCP listener failure: {}", e)))
@@ -128,26 +126,6 @@ impl Core {
                 listen_metrics,
             ) => x.map(|_| ()),
         }
-    }
-
-    /// Run an endpoint instance in a blocking way.
-    /// This one will set up its own asynchronous runtime.
-    pub fn listen(&mut self) -> io::Result<()> {
-        let runtime = {
-            let context = self.context.clone();
-            let threads_num = context.settings.threads_number;
-            tokio::runtime::Builder::new_multi_thread()
-                .enable_io()
-                .enable_time()
-                .worker_threads(threads_num)
-                .build()?
-        };
-
-        let _guard = runtime.enter();
-
-        runtime.block_on(async {
-            self.listen_async().await
-        })
     }
 
     async fn listen_tcp(&self) -> io::Result<()> {

@@ -2,7 +2,7 @@ mod logging;
 
 use std::fs::File;
 use std::io::BufReader;
-use log::LevelFilter;
+use log::{info, LevelFilter};
 use vpn_libs_endpoint::core::Core;
 use vpn_libs_endpoint::settings::Settings;
 use vpn_libs_endpoint::shutdown::Shutdown;
@@ -14,6 +14,7 @@ const LOG_LEVEL_PARAM_NAME: &str = "log_level";
 const LOG_FILE_PARAM_NAME: &str = "log_file";
 const CONFIG_PARAM_NAME: &str = "config";
 const SENTRY_DSN_PARAM_NAME: &str = "sentry_dsn";
+const THREADS_NUM_PARAM_NAME: &str = "threads_num";
 
 
 fn main() {
@@ -42,6 +43,11 @@ fn main() {
                 .long(SENTRY_DSN_PARAM_NAME)
                 .action(clap::ArgAction::Set)
                 .help("Sentry DSN (see https://docs.sentry.io/product/sentry-basics/dsn-explainer/ for details)"),
+            clap::Arg::new(THREADS_NUM_PARAM_NAME)
+                .long("jobs")
+                .action(clap::ArgAction::Set)
+                .value_parser(clap::value_parser!(usize))
+                .help("The number of worker threads. If not specified, set to the number of CPUs on the machine."),
             clap::Arg::new(CONFIG_PARAM_NAME)
                 .action(clap::ArgAction::Set)
                 .required_unless_present(VERSION_PARAM_NAME)
@@ -89,21 +95,36 @@ fn main() {
         File::open(config_path).expect("Couldn't open the configuration file")
     )).expect("Failed parsing the configuration file");
 
-    let rt = tokio::runtime::Builder::new_current_thread()
-        .enable_all()
-        .build()
-        .expect("Failed to set up runtime");
+    let rt = {
+        let mut builder = tokio::runtime::Builder::new_multi_thread();
+        builder.enable_io();
+        builder.enable_time();
+
+        if let Some(n) = args.get_one::<usize>(THREADS_NUM_PARAM_NAME) {
+            builder.worker_threads(*n);
+        }
+
+        builder.build()
+            .expect("Failed to set up runtime")
+    };
 
     let shutdown = Shutdown::new();
-    let mut core = Core::new(parsed, shutdown.clone()).expect("Couldn't create core instance");
+    let core = Core::new(parsed, shutdown.clone()).expect("Couldn't create core instance");
 
-    rt.spawn_blocking(move || {
-        core.listen().expect("Error while listening IO events");
-    });
+    let listen_task = async move {
+        core.listen().await
+    };
 
-    rt.block_on(async move {
+    let interrupt_task = async move {
         tokio::signal::ctrl_c().await.unwrap();
         shutdown.lock().unwrap().submit();
-        shutdown.lock().unwrap().completion().await;
+        shutdown.lock().unwrap().completion().await
+    };
+
+    rt.block_on(async move {
+        tokio::select! {
+            listen_result = listen_task => listen_result.expect("Error while listening IO events"),
+            _ = interrupt_task => info!("Interrupted by user"),
+        }
     });
 }

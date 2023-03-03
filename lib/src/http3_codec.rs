@@ -85,11 +85,6 @@ impl Http3Codec {
         }
     }
 
-    fn close_stream(&mut self, stream_id: u64) {
-        let _ = self.streams.remove(&stream_id);
-        self.socket.close_stream(stream_id);
-    }
-
     fn on_stream_message(&mut self, message: StreamMessage) -> io::Result<()> {
         match message {
             StreamMessage::WaitingWritable(stream_id) => {
@@ -136,7 +131,7 @@ impl Http3Codec {
                 Ok(None)
             }
             QuicSocketEvent::Close(stream_id) => {
-                self.close_stream(stream_id);
+                let _ = self.on_stream_shutdown(stream_id, None);
                 Ok(None)
             }
         }
@@ -259,7 +254,7 @@ impl HttpCodec for Http3Codec {
                     if let Err(e) = self.on_stream_message(message) {
                         log_id!(debug, self.parent_id_chain, "Failed to process stream message: id={}, error={}",
                             stream_id, e);
-                        self.close_stream(stream_id);
+                        let _ = self.on_stream_shutdown(stream_id, None);
                     }
                 }
                 Some(FiredEvent::Socket(event)) => match self.on_socket_event(event)? {

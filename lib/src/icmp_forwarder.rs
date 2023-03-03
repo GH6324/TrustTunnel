@@ -22,6 +22,8 @@ use crate::settings::Settings;
 
 pub(crate) struct IcmpForwarder {
     shared: Arc<ForwarderShared>,
+    /// Waiting for notification from [`ForwarderShared::deadline_waker_tx`]
+    deadline_waker_rx: Arc<tokio::sync::Notify>,
 }
 
 #[derive(Clone)]
@@ -46,8 +48,8 @@ struct ForwarderShared {
     core_settings: Arc<Settings>,
     sockets: RwLock<Sockets>,
     listeners: Mutex<Listeners>,
-    deadline_waker_rx: Mutex<mpsc::Receiver<()>>,
-    deadline_waker_tx: mpsc::Sender<()>,
+    /// Wakes [`IcmpForwarder::deadline_waker_rx`]
+    deadline_waker_tx: Arc<tokio::sync::Notify>,
 }
 
 struct PipeShared {
@@ -68,15 +70,15 @@ impl IcmpForwarder {
     pub fn new(
         core_settings: Arc<Settings>,
     ) -> Self {
-        let (deadline_tx, deadline_rx) = mpsc::channel(1);
+        let deadline_waker = Arc::new(tokio::sync::Notify::new());
         Self {
             shared: Arc::new(ForwarderShared {
                 core_settings,
                 sockets: Default::default(),
                 listeners: Default::default(),
-                deadline_waker_rx: Mutex::new(deadline_rx),
-                deadline_waker_tx: deadline_tx,
+                deadline_waker_tx: deadline_waker.clone(),
             }),
+            deadline_waker_rx: deadline_waker,
         }
     }
 
@@ -181,9 +183,7 @@ impl IcmpForwarder {
             let closest_deadline = self.shared.listeners.lock().unwrap()
                 .deadlines.keys().next().cloned();
             match closest_deadline {
-                None => self.shared.deadline_waker_rx.lock().unwrap()
-                    .recv().await
-                    .ok_or_else(|| io::Error::new(ErrorKind::Other, "Deadline waker sender is dropped"))?,
+                None => self.deadline_waker_rx.notified().await,
                 Some(x) => tokio::time::sleep_until(x).await,
             }
 
@@ -329,7 +329,7 @@ impl datagram_pipe::Sink for IcmpSink {
             Entry::Vacant(e) => {
                 e.insert(LinkedList::from([echo.clone()]));
                 if listeners.deadlines.len() == 1 {
-                    let _ = forwarder_shared.deadline_waker_tx.try_send(());
+                    forwarder_shared.deadline_waker_tx.notify_one();
                 }
             }
             Entry::Occupied(mut e) => {

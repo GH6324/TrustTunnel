@@ -33,4 +33,7 @@ set -x
 sed -i -e "s/^version = \"${VERSION}\"$/version = \"${NEW_VERSION}\"/" Cargo.toml
 
 # Update changelog
-sed -i -e '3{s/##/##/;t;s/^/## '${NEW_VERSION}'\n\n/}' CHANGELOG.md
+sed -i -e "3{
+/##/b
+s/^/## ${NEW_VERSION}\n\n/
+}" CHANGELOG.md

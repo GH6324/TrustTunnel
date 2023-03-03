@@ -34,7 +34,7 @@ struct MultiplexerSource {
 
 struct MultiplexerSink {
     shared: Arc<MultiplexerShared>,
-    wake_tx: Arc<sync::mpsc::Sender<()>>,
+    wake_tx: sync::mpsc::Sender<()>,
 }
 
 struct SocketError {
@@ -70,7 +70,7 @@ pub(crate) fn make_multiplexer(
         }),
         Box::new(MultiplexerSink {
             shared,
-            wake_tx: Arc::new(wake_tx),
+            wake_tx,
         }),
     ))
 }

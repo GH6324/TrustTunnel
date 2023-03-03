@@ -654,11 +654,6 @@ impl QuicSocket {
         self.flush_pending_data()
     }
 
-    pub fn close_stream(&self, stream_id: u64) {
-        self.shutdown_stream(stream_id, quiche::Shutdown::Read);
-        self.shutdown_stream(stream_id, quiche::Shutdown::Write);
-    }
-
     pub async fn listen(&self) -> io::Result<QuicSocketEvent> {
         loop {
             let event = loop {
