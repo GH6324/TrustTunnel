@@ -68,7 +68,8 @@ Build on macOS:
             cargo build --release --target x86_64-apple-darwin
             cp target/x86_64-apple-darwin/release/vpn_endpoint target/vpn_endpoint.osx-x86_64
   requirements:
-    - macOS 11.0 or later
+    - ephemeral
+    - image: registry.int.agrd.dev/macos/sequoia-build-agent-xcode16.1:latest
   artifact-subscriptions: [ ]
   artifacts:
     - name: Build result macOS
