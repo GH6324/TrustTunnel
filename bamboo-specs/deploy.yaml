@@ -65,8 +65,9 @@ Build on Linux:
               llvm-strip trusttunnel_endpoint
               llvm-strip setup_wizard
               cp ${ENDPOINT_ROOT}/LICENSE .
+              cp ${ENDPOINT_ROOT}/scripts/trusttunnel.service.template .
               NAME=trusttunnel-v${VERSION}-linux-aarch64
-              tar zcf ${NAME}.tar.gz --transform "s,^,${NAME}/," trusttunnel_endpoint setup_wizard LICENSE
+              tar zcf ${NAME}.tar.gz --transform "s,^,${NAME}/," trusttunnel_endpoint setup_wizard LICENSE trusttunnel.service.template
               mv ${NAME}.tar.gz ${ENDPOINT_ROOT}/build_linux
             popd
 
@@ -74,8 +75,9 @@ Build on Linux:
               llvm-strip trusttunnel_endpoint
               llvm-strip setup_wizard
               cp ${ENDPOINT_ROOT}/LICENSE .
+              cp ${ENDPOINT_ROOT}/scripts/trusttunnel.service.template .
               NAME=trusttunnel-v${VERSION}-linux-x86_64
-              tar zcf ${NAME}.tar.gz --transform "s,^,${NAME}/," trusttunnel_endpoint setup_wizard LICENSE
+              tar zcf ${NAME}.tar.gz --transform "s,^,${NAME}/," trusttunnel_endpoint setup_wizard LICENSE trusttunnel.service.template
               mv ${NAME}.tar.gz ${ENDPOINT_ROOT}/build_linux
             popd
   requirements:
@@ -138,11 +140,16 @@ Deploy artifacts:
             chmod 600 ~/.ssh/id_rsa
 
             VERSION=$(cat endpoint/Cargo.toml | grep "version = " | head -n 1 | sed -e 's/version = "\(.*\)"/\1/')
+
+            # Update version in install script and push tag
+            sed -i -e "s/^version='[0-9\.]*'$/version='${VERSION}'/" scripts/install.sh
+            git add scripts/install.sh
+            git commit -m "Automatic increment version for install script"
             TAG=v${VERSION}
             git tag -d ${TAG} || true
             git tag ${TAG}
             git remote set-url origin "${bamboo_planRepository_1_repositoryUrl}"
-            git push origin ${TAG}
+            git push origin --follow-tags
 
             # TODO: change to bamboo_githubPublicRepoPassword when repo become public
             git clone https://${bamboo_githubPrivateRepoPassword}:@github.com/TrustTunnel/TrustTunnel/

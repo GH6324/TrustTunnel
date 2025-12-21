@@ -53,3 +53,11 @@ endpoint/gen_client_config:
 ## Clean cargo artifacts
 endpoint/clean:
 	cargo clean
+
+.PHONY: lint-md
+## Lint markdown files.
+## `markdownlint-cli` should be installed:
+##    macOS: `brew install markdownlint-cli`
+##    Linux: `npm install -g markdownlint-cli`
+lint-md:
+	markdownlint README.md DEVELOPMENT.md

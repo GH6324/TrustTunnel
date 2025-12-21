@@ -18,14 +18,18 @@
 - [Introduction](#introduction)
 - [Server Features](#server-features)
 - [Client Features](#client-features)
-- [Getting Started with the endpoint](#getting-started)
-    - [Prerequisites](#prerequisites)
-    - [Building](#building)
-- [Usage](#usage)
-    - [Quick Start](#quick-start)
-    - [Customized Configuration](#customized-configuration)
-    - [Generate client config](#generate-client-config)
-- [Companion Client Repository](#companion-client-repository)
+- [Quick start](#quick-start)
+    - [Endpoint setup](#endpoint-setup)
+        - [Install the endpoint](#install-the-endpoint)
+        - [TrustTunnel Flutter Client 1.0 warning](#trusttunnel-flutter-client-1.0-warning)
+        - [Endpoint configuration](#endpoint-configuration)
+        - [Running endpoint](#running-endpoint)
+        - [Export client configuration](#export-client-configuration)
+    - [Client setup](#client-setup)
+        - [Install the client](#install-the-client)
+        - [Client configuration](#client-configuration)
+        - [Running client](#running-client)
+- [Additional documentation](#additional-documentation)
 - [Roadmap](#roadmap)
 - [License](#license)
 
@@ -35,9 +39,9 @@
 
 Welcome to the TrustTunnel repository!
 
-TrustTunnel is free, fast secure and fully self-hosted VPN solution powered by its own unique VPN protocol.
+TrustTunnel is a free, fast, secure, and fully self-hosted VPN solution powered by its own unique VPN protocol.
 
-TrustTunnel project includes VPN endpoint (this repository), [library and CLI for client](https://github.com/TrustTunnel/TrustTunnelClient) and [GUI application](https://github.com/TrustTunnelFlutterClient)
+The TrustTunnel project includes the VPN endpoint (this repository), the [library and CLI for the client](https://github.com/TrustTunnel/TrustTunnelClient), and the [GUI application](https://github.com/TrustTunnel/TrustTunnelFlutterClient).
 
 ## Server Features
 
@@ -49,7 +53,7 @@ TrustTunnel project includes VPN endpoint (this repository), [library and CLI fo
 - **Flexible Traffic Tunneling**: TrustTunnel can tunnel TCP, UDP, and ICMP traffic to and
   from the client.
 
-- **Platform Compatibility**: Server is compatible with Linux and macOS systems. Client exists for Android, Apple, Windows and Linux platforms.
+- **Platform Compatibility**: The server is compatible with Linux and macOS. The client is available for Android, Apple, Windows, and Linux.
 
 ---
 
@@ -73,114 +77,157 @@ TrustTunnel project includes VPN endpoint (this repository), [library and CLI fo
 
 ---
 
-## Getting Started with the endpoint
+## Quick start
 
-### Prerequisites
+### Endpoint setup
 
-Before proceeding, ensure that you have Rust installed on your system.
-Visit the [Rust installation page](https://www.rust-lang.org/tools/install) for
-detailed instructions.
-The minimum supported version of the Rust compiler is 1.85.
-`libclang` library 9.0 or higher is also required.
-This project is compatible with Linux and macOS systems.
+#### Install the endpoint
 
-### Building
+An installation script is available that can be run with the following command:
 
-To install TrustTunnel Endpoint, follow these steps:
-
-1. Clone the repository:
-
-   ```shell
-   git clone https://github.com/TrustTunnel/TrustTunnel.git
-   cd TrustTunnel
-   ```
-
-2. Build the binaries using Cargo:
-
-   ```shell
-   cargo build --bins --release
-   ```
-
-   This command will generate the executables in the `target/release` directory.
-
-## Usage
-
-### Quick Start
-
-To quickly configure and launch the VPN endpoint, run the following commands:
-
-```shell
-make ENDPOINT_HOSTNAME="example.org" endpoint/setup  # You can skip it if you have already configured the endpoint earlier
-make endpoint/run
+```bash
+curl -fsSL https://raw.githubusercontent.com/TrustTunnel/TrustTunnel/refs/heads/master/scripts/install.sh | sh -s -
 ```
 
-Check `Makefile` for available configuration variables.
+The installation script will download the prebuilt package from the latest GitHub release for the appropriate system architecture and unpack it to `/opt/trusttunnel`. The output directory could be overridden by specifying `-o DIR` flag at the end of the command above.
 
-These commands perform the following actions:
+> Currently only `linux-x86_64` and `linux-aarch64` architectures are provided for the prebuilt packages.
 
-1. Build the wizard and endpoint binaries.
+#### TrustTunnel Flutter Client 1.0 warning
 
-2. Configure the endpoint to listen to all network interfaces for TCP/UDP packets on
-   port number 443.
+> TrustTunnel Flutter Client **doesn't support** self-signed certificates yet. If you want to use the TrustTunnel Flutter Client, you should have a valid certificate issued by a publicly trusted Certificate Authority (CA) associated with a registered domain for the IP address of the endpoint. Otherwise, the TrustTunnel Flutter Client will be unable to connect to the endpoint.
 
-3. Generate self-signed certificate/private key pair in the current directory under `certs/`.
+#### Endpoint configuration
 
-4. Store all the required settings in `vpn.toml` and `hosts.toml` files.
+The installation directory contains `setup_wizard` binary that helps generate the config files required for the endpoint to run:
 
-5. Start the endpoint.
-
-Alternatively, you can run the endpoint in a docker container:
-
-```shell
-docker build -t trusttunnel-endpoint:latest . # build an image
-
-docker run -it trusttunnel-endpoint:latest --name trusttunnel-endpoint # create docker container and start it in an interactive mode
-
-docker start -i trusttunnel-endpoint # if you need to start your vpn endpoint again
+```bash
+cd /opt/trusttunnel/
+./setup_wizard -h
 ```
 
-The generated certificate (by default, it resides in `certs/cert.pem` or `/TrustTunnel/certs/cert.pem` inside your docker volume) should be delivered to the client-side in some way. See the [Companion Client Repository](#companion-client-repository) for
-details.
+The setup wizard supports interactive mode, so you could run it and it will ask for data required for endpoint configuration.
 
-### Customized Configuration
-
-For a more customized configuration experience, run the following commands:
-
-```shell
-make endpoint/build-wizard  # If you skipped the previous chapter
-cargo run --bin setup_wizard  # Launches a dialogue session allowing you to tweak the settings
-cargo run --bin trusttunnel_endpoint -- <lib-settings> <hosts-settings>  # File names depend on the previous step
+```bash
+cd /opt/trusttunnel/
+./setup_wizard
 ```
 
-For additional details about the binary, refer to the [endpoint/README.md](./endpoint/README.md)
-file.
+The wizard will ask for the following fields, some of them have the default values you could safely use:
+
+- **The address to listen on** - specify the address for the endpoint to listen on. Use the default `0.0.0.0:443` if you want the endpoint to listen on port 443 (HTTPS) on all interfaces.
+- **Path to credentials file** - path where the user credentials for authorization will be stored.
+- **Username** - the username the user will use for authorization.
+- **Password** - the user's password.
+- **Add one more user?** - select `yes` if you want to add more users, or `no` to continue the configuration process.
+- **Path to the rules file** - path to store the filtering rules.
+- **Connection filtering rules** - you can add rules that the endpoint will use to allow or disallow user's connections based on:
+    - Client IP address
+    - TLS random prefix
+    - TLS random with mask
+
+  Press `n` to allow all connections.
+- **Path to a file to store the library settings** - path to store the main endpoint configuration file.
+- **Generate a self-signed certificate?** - the endpoint could generate the self-signed certificate to use for the HTTPS connection.
+
+  Press `n` if you are going to use the TrustTunnel Flutter Client and specify the key/cert pair of the certificate issued by a CA.
+  > If you have a registered domain, the recommended setup is to generate the publicly trusted key/certificate pair using ACME client, e.g. `certbot`, and specify it during this step. Please, refer to `certbot` [documentation](https://eff-certbot.readthedocs.io/en/stable/using.html#getting-certificates-and-choosing-plugins)
+- **Path to a file to store the TLS hosts settings** - path to store the TLS host settings file.
+
+At this point all required configuration files are created and saved on disk.
 
 > The settings files created by the Setup Wizard contain almost all available settings,
 > including descriptions.
 > You can freely customize them if you are confident in your understanding of the configuration.
 
-### Generate client config
+#### Running endpoint
+
+The installed package contains the systemd service template, called `trusttunnel.service.template`.
+
+This template can be used to set up the endpoint as a systemd service:
+
+> NOTE: the template file assumes that the TrustTunnel Endpoint binary and all its configuration files are located in `/opt/trusttunnel` and have the default file names. Modify the template if you have used the different paths.
+
+```bash
+cd /opt/trusttunnel/
+mv trusttunnel.service.template trusttunnel.service
+sudo ln -s trusttunnel.service /etc/systemd/system/trusttunnel.service
+sudo systemctl daemon-reload
+sudo systemctl enable --now trusttunnel
+```
+
+#### Export client configuration
 
 The endpoint binary is capable of generating the client configuration for a particular user.
 
 This configuration contains all necessary information that is required to connect to the endpoint.
 
-To generate the configuration run the following command:
+To generate the configuration, run the following command:
 
 ```shell
 # <client_name> - name of the client those credentials will be included in the configuration
 # <public_ip_and_port> - `ip:port` that the user will use to connect to the endpoint
-cargo run --bin trusttunnel_endpoint -- <lib-settings> <host-settings> -c <client_name> -a <public_ip_and_port>
-# or
-make endpoint/gen_client_config CLIENT_NAME="<client_name>" ENDPOINT_ADDRESS="<public_ip_and_port"
+cd /opt/trusttunnel/
+./trusttunnel_endpoint vpn.toml hosts.toml -c <client_name> -a <public_ip_and_port>
 ```
 
-This will print the configuration with the credentials for client with name <client_name> 
+This will print the configuration with the credentials for the client named `<client_name>`.
 
-## Companion Client Repository
+The generated client configuration could be used to set up the TrustTunnel Flutter Client, refer to the documentation in the [appropriate repository](https://github.com/TrustTunnel/TrustTunnelFlutterClient/blob/master/README.md#server-configuration).
 
-To connect to your newly set-up VPN server, you need a client.
-You have a choice to use a [CLI client](https://github.com/TrustTunnel/TrustTunnelClient.git) or a [GUI client](https://github.com/TrustTunnel/TrustTunnelFlutterClient.git)
+Congratulations! You've done setting up the endpoint!
+
+### Client setup
+
+#### Install the client
+
+You have a choice to use a [CLI client](https://github.com/TrustTunnel/TrustTunnelClient) or a [GUI client](https://github.com/TrustTunnel/TrustTunnelFlutterClient)
+
+To install the CLI client, run the following command:
+
+```bash
+curl -fsSL https://raw.githubusercontent.com/TrustTunnel/TrustTunnelClient/refs/heads/master/scripts/install.sh | sh -s -
+```
+
+The installation script will download the prebuilt package from the latest GitHub release for the appropriate system architecture and unpack it to `/opt/trusttunnel_client`. The output directory could be overridden by specifying `-o DIR` flag at the end of the command above.
+
+> Install script supports x86_64, aarch64, armv7, mips and mipsel architectures for linux and arm64 and x86_64 for macos.
+
+#### Client configuration
+
+The installation directory contains `setup_wizard` binary that helps generate the config files required for the client to run:
+
+```bash
+cd /opt/trusttunnel_client/
+./setup_wizard -h
+```
+
+To configure the client to use the config that was generated by endpoint, run the following command:
+
+```bash
+./setup_wizard --mode non-interactive \
+     --endpoint_config <endpoint_config>
+     --settings trusttunnel_client.toml
+```
+
+where `<endpoint_config>` is path to a config generated by the endpoint.
+
+`trusttunnel_client.toml` will contain all required configuration for the client.
+
+#### Running client
+
+To run the client execute the following command:
+
+```bash
+cd /opt/trusttunnel_client/
+sudo ./trusttunnel_client -c trusttunnel_client.toml
+```
+
+`sudo` is required to set up the routes and tun interface.
+
+## Additional documentation
+
+Refer to the [DEVELOPMENT.md](DEVELOPMENT.md) for the more detailed documentation, including instructions to build the project from source.
 
 ## Roadmap
 

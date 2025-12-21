@@ -1,0 +1,22 @@
+# Service template for the TrustTunnel endpoint
+# Adjust paths at `ExecStart` and symlink this to systemd system directory:
+#
+# mv trusttunnel.service.template trusttunnel.service
+# ln -s trusttunnel.service /etc/systemd/system/trusttunnel.service
+# systemctl daemon-reload
+# systemctl enable --now trusttunnel
+
+[Unit]
+Description=TrustTunnel endpoint
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+Type=simple
+WorkingDirectory=/opt/trusttunnel
+ExecStart=/opt/trusttunnel/trusttunnel_endpoint vpn.toml hosts.toml
+Restart=on-failure
+RestartSec=3
+
+[Install]
+WantedBy=multi-user.target
