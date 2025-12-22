@@ -139,6 +139,9 @@ Deploy artifacts:
             printf "%b\n" "${bamboo_sshSecretKey}" > ~/.ssh/id_rsa
             chmod 600 ~/.ssh/id_rsa
 
+            git config user.email "Bamboo"
+            git config user.name "Bamboo"
+
             VERSION=$(cat endpoint/Cargo.toml | grep "version = " | head -n 1 | sed -e 's/version = "\(.*\)"/\1/')
 
             # Update version in install script and push tag
