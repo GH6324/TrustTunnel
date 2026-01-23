@@ -1,5 +1,7 @@
 # CHANGELOG
 
+## 0.9.114
+
 - Fixed an issue where allow_private_network_connections set to false could be bypassed
 when a numeric address was used.
 
