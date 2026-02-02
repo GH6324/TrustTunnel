@@ -177,9 +177,8 @@ pub(crate) fn bind_to_interface(
     // FreeBSD doesn't have SO_BINDTODEVICE (Linux) or IP_BOUND_IF (macOS).
     // We bind the socket to the interface's IP address instead, which achieves
     // the same effect of restricting traffic to that interface.
-    let c_name = CString::new(name).map_err(|_| {
-        io::Error::new(io::ErrorKind::InvalidInput, "invalid interface name")
-    })?;
+    let c_name = CString::new(name)
+        .map_err(|_| io::Error::new(io::ErrorKind::InvalidInput, "invalid interface name"))?;
 
     let mut ifaddrs: *mut libc::ifaddrs = std::ptr::null_mut();
     // SAFETY: getifaddrs writes to our pointer, which we'll free with freeifaddrs
@@ -241,7 +240,11 @@ pub(crate) fn bind_to_interface(
             io::ErrorKind::NotFound,
             format!(
                 "no {} address found for interface {}",
-                if family == libc::AF_INET { "IPv4" } else { "IPv6" },
+                if family == libc::AF_INET {
+                    "IPv4"
+                } else {
+                    "IPv6"
+                },
                 name
             ),
         )
