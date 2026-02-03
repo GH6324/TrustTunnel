@@ -60,6 +60,12 @@ Build on Linux:
 
             mkdir -p build_linux
             VERSION=$(cat endpoint/Cargo.toml | grep "version = " | head -n 1 | sed -e 's/version = "\(.*\)"/\1/')
+            
+            # Set up GPG for signing binaries
+            GPG_KEY=devteam@adguard.com
+            echo "${bamboo.gpgSecretKeyPart1}${bamboo.gpgSecretKeyPart2}"\
+                        | awk '{ gsub(/\\n/, "\n"); print; }'\
+                        | gpg --import --batch --yes
 
             pushd target/aarch64-unknown-linux-musl/release/
               llvm-objcopy --only-keep-debug trusttunnel_endpoint trusttunnel_endpoint.debug
@@ -70,8 +76,19 @@ Build on Linux:
               llvm-objcopy --add-gnu-debuglink=setup_wizard.debug setup_wizard
               cp ${ENDPOINT_ROOT}/LICENSE .
               cp ${ENDPOINT_ROOT}/scripts/trusttunnel.service.template .
+              # Sign binaries with GPG
+              gpg --default-key "${GPG_KEY}" \
+                  --detach-sig \
+                  --passphrase "${bamboo.gpgPassword}" \
+                  --pinentry-mode loopback \
+                  trusttunnel_endpoint
+              gpg --default-key "${GPG_KEY}" \
+                  --detach-sig \
+                  --passphrase "${bamboo.gpgPassword}" \
+                  --pinentry-mode loopback \
+                  setup_wizard
               NAME=trusttunnel-v${VERSION}-linux-aarch64
-              tar zcf ${NAME}.tar.gz --transform "s,^,${NAME}/," trusttunnel_endpoint setup_wizard LICENSE trusttunnel.service.template
+              tar zcf ${NAME}.tar.gz --transform "s,^,${NAME}/," trusttunnel_endpoint trusttunnel_endpoint.sig setup_wizard setup_wizard.sig LICENSE trusttunnel.service.template
               mv ${NAME}.tar.gz ${ENDPOINT_ROOT}/build_linux
 
               NAME_DBG=${NAME}-dbgsym
@@ -88,8 +105,19 @@ Build on Linux:
               llvm-objcopy --add-gnu-debuglink=setup_wizard.debug setup_wizard
               cp ${ENDPOINT_ROOT}/LICENSE .
               cp ${ENDPOINT_ROOT}/scripts/trusttunnel.service.template .
+              # Sign binaries with GPG
+              gpg --default-key "${GPG_KEY}" \
+                  --detach-sig \
+                  --passphrase "${bamboo.gpgPassword}" \
+                  --pinentry-mode loopback \
+                  trusttunnel_endpoint
+              gpg --default-key "${GPG_KEY}" \
+                  --detach-sig \
+                  --passphrase "${bamboo.gpgPassword}" \
+                  --pinentry-mode loopback \
+                  setup_wizard
               NAME=trusttunnel-v${VERSION}-linux-x86_64
-              tar zcf ${NAME}.tar.gz --transform "s,^,${NAME}/," trusttunnel_endpoint setup_wizard LICENSE trusttunnel.service.template
+              tar zcf ${NAME}.tar.gz --transform "s,^,${NAME}/," trusttunnel_endpoint trusttunnel_endpoint.sig setup_wizard setup_wizard.sig LICENSE trusttunnel.service.template
               mv ${NAME}.tar.gz ${ENDPOINT_ROOT}/build_linux
 
               NAME_DBG=${NAME}-dbgsym

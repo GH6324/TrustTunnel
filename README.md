@@ -368,6 +368,7 @@ sudo ./trusttunnel_client -c trusttunnel_client.toml
 - [DEVELOPMENT.md](DEVELOPMENT.md) - Development documentation
 - [PROTOCOL.md](PROTOCOL.md) - Protocol specification
 - [CHANGELOG.md](CHANGELOG.md) - Changelog
+- [VERIFY_RELEASES.md](VERIFY_RELEASES.md) - How to verify releases
 
 ## Roadmap
 
