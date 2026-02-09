@@ -1,5 +1,7 @@
 # CHANGELOG
 
+- [Feature] Added GPG signing of the endpoint binaries.
+
 ## 0.9.122
 
 - Endpoint now requires credentials when listening on a public address.
