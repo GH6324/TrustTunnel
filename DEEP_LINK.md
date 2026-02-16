@@ -9,7 +9,7 @@ Status: draft.
 
 ## URI Format
 
-```
+```uri
 tt://<base64url-encoded payload>
 ```
 
@@ -37,7 +37,7 @@ Each field is encoded as a **Tag–Length–Value (TLV)** entry:
 
 | Component | Encoding | Description |
 | --------- | -------- | ----------- |
-| **Tag**   | TLS varint | Field identifier (see table below) |
+| **Tag** | TLS varint | Field identifier (see table below) |
 | **Length** | TLS varint | Byte length of the value that follows |
 | **Value** | *Length* bytes | Field-specific payload |
 
@@ -52,10 +52,10 @@ length of the integer:
 
 | 2-MSB | Integer size | Usable bits | Max value |
 | ----- | ------------ | ----------- | --------- |
-| `00`  | 1 byte       | 6           | 63 |
-| `01`  | 2 bytes      | 14          | 16 383 |
-| `10`  | 4 bytes      | 30          | 1 073 741 823 |
-| `11`  | 8 bytes      | 62          | 4 611 686 018 427 387 903 |
+| `00` | 1 byte | 6 | 63 |
+| `01` | 2 bytes | 14 | 16 383 |
+| `10` | 4 bytes | 30 | 1 073 741 823 |
+| `11` | 8 bytes | 62 | 4 611 686 018 427 387 903 |
 
 Multi-byte varints are in **network byte order** (big-endian). In practice,
 current tags fit in a single byte (`00` prefix) and lengths under 16 384 fit
@@ -113,7 +113,7 @@ anti_dpi = false
 
 1. **Serialize** each field into TLV entries:
 
-   ```
+   ```text
    Tag=0x01  Len=15  Value="vpn.example.com"
    Tag=0x02  Len=11  Value="1.2.3.4:443"
    Tag=0x03  Len=11  Value="example.org"
@@ -133,7 +133,7 @@ anti_dpi = false
 
 4. **Construct** the URI:
 
-   ```
+   ```uri
    tt://AQAL...  (full Base64url string)
    ```
 
