@@ -1,5 +1,7 @@
 # CHANGELOG
 
+## 0.9.137
+
 - [Feature] Added `client_random_prefix` field to client configuration export
     - New CLI option `--client-random-prefix`
     - Validates hex format and checks against `rules.toml`
