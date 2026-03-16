@@ -24,6 +24,7 @@ const CLIENT_RANDOM_PREFIX_PARAM_NAME: &str = "client_random_prefix";
 const FORMAT_PARAM_NAME: &str = "format";
 const SENTRY_DSN_PARAM_NAME: &str = "sentry_dsn";
 const THREADS_NUM_PARAM_NAME: &str = "threads_num";
+const TRUSTTUNNEL_QR_URL: &str = "https://trusttunnel.org/qr.html";
 
 #[cfg(unix)]
 fn increase_fd_limit() {
@@ -347,7 +348,13 @@ fn main() {
                 println!("{}", client_config.compose_toml());
             }
             "deeplink" => match client_config.compose_deeplink() {
-                Ok(deep_link) => println!("{}", deep_link),
+                Ok(deep_link) => {
+                    println!("{deep_link}");
+                    println!(
+                        "\nTo connect on mobile, you can scan QR code on the page: {TRUSTTUNNEL_QR_URL}#tt={}",
+                        deep_link.strip_prefix("tt://?").unwrap()
+                    );
+                }
                 Err(e) => {
                     eprintln!("Error generating deep-link: {}", e);
                     std::process::exit(1);
