@@ -93,7 +93,7 @@ The endpoint binary accepts the following command line arguments:
 
 # Generate a new client_random_prefix with a custom mask
 ./trusttunnel_endpoint vpn.toml hosts.toml -c username -a vpn.example.com \
-    --generate-client-random-prefix --prefix-mask ffff0000
+    --generate-client-random-prefix --prefix-mask aaaa7777
 ```
 
 ---

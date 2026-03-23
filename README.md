@@ -261,11 +261,6 @@ cd /opt/trusttunnel/
 
 # Or explicitly specify the format:
 ./trusttunnel_endpoint vpn.toml hosts.toml -c <client_name> -a <address> --format deeplink
-
-# Generate a new client_random_prefix, append a matching allow rule to rules.toml,
-# and include it in the exported client config:
-./trusttunnel_endpoint vpn.toml hosts.toml -c <client_name> -a <address> \
-    --generate-client-random-prefix
 ```
 
 This outputs a `tt://?` deep-link URI that can be:
