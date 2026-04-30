@@ -28,10 +28,6 @@ on:
   repository_dispatch:
     types: [client-bench]
 
-concurrency:
-  group: bench
-  cancel-in-progress: false
-
 jobs:
   bench:
     name: Run Benchmarks
