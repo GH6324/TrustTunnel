@@ -3,7 +3,6 @@ use rustls::crypto::aws_lc_rs;
 use rustls::ServerConfig;
 use rustls_pki_types::{CertificateDer, PrivateKeyDer};
 use std::io;
-use std::io::ErrorKind;
 use std::pin::Pin;
 use std::sync::Arc;
 use std::task::{Context, Poll};
@@ -210,14 +209,11 @@ impl TlsAcceptor {
             ];
             let mut cfg = ServerConfig::builder_with_provider(Arc::new(provider))
                 .with_safe_default_protocol_versions()
-                .map_err(|e| io::Error::new(ErrorKind::Other, format!("TLS config error: {}", e)))?
+                .map_err(|e| io::Error::other(format!("TLS config error: {}", e)))?
                 .with_no_client_auth()
                 .with_single_cert(cert_chain, key)
                 .map_err(|e| {
-                    io::Error::new(
-                        ErrorKind::Other,
-                        format!("Failed to create TLS configuration: {}", e),
-                    )
+                    io::Error::other(format!("Failed to create TLS configuration: {}", e))
                 })?;
 
             cfg.alpn_protocols = vec![protocol.as_alpn().as_bytes().to_vec()];

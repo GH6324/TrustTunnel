@@ -229,7 +229,7 @@ impl pipe::Sink for ForwardedStreamSink {
 
     fn write(&mut self, data: Bytes) -> io::Result<Bytes> {
         match &self.state {
-            SinkState::Idle => Err(io::Error::new(ErrorKind::Other, "Invalid state")),
+            SinkState::Idle => Err(io::Error::other("Invalid state")),
             SinkState::WaitingResponse(_) => match self.on_response_headers_chunk(data) {
                 Err(e) if matches!(self.state, SinkState::WaitingResponse(_)) => {
                     match std::mem::replace(&mut self.state, SinkState::Idle) {
@@ -272,7 +272,7 @@ impl pipe::Sink for ForwardedStreamSink {
 
         match &mut self.state {
             SinkState::Idle | SinkState::WaitingResponse(_) => {
-                Err(io::Error::new(ErrorKind::Other, "Invalid state"))
+                Err(io::Error::other("Invalid state"))
             }
             SinkState::WaitingChunkPrefix(_) | SinkState::WaitingChunkSuffix(_) => Ok(()),
             SinkState::TransferringBodyNonEncoded(x) => x.sink.wait_writable().await,
@@ -398,10 +398,7 @@ impl ForwardedStreamSink {
                 return Ok(Bytes::new());
             }
             Err(httparse::InvalidChunkSize) => {
-                return Err(io::Error::new(
-                    ErrorKind::Other,
-                    "Invalid encoded chunk size",
-                ))
+                return Err(io::Error::other("Invalid encoded chunk size"))
             }
         };
 
@@ -480,10 +477,7 @@ impl ForwardedStreamSink {
         };
 
         if !ENCODED_CHUNK_SUFFIX.as_bytes().starts_with(&suffix) {
-            return Err(io::Error::new(
-                ErrorKind::Other,
-                "Invalid encoded chunk suffix",
-            ));
+            return Err(io::Error::other("Invalid encoded chunk suffix"));
         }
 
         if suffix.len() < ENCODED_CHUNK_SUFFIX.len() {
@@ -544,12 +538,7 @@ impl SinkWaitingResponse {
                     parse_headers_buffer
                         .resize(2 * parse_headers_buffer.len(), httparse::EMPTY_HEADER)
                 }
-                Err(e) => {
-                    return Err(io::Error::new(
-                        ErrorKind::Other,
-                        format!("Failed to parse response: {}", e),
-                    ))
-                }
+                Err(e) => return Err(io::Error::other(format!("Failed to parse response: {}", e))),
             }
         }
     }
@@ -588,23 +577,17 @@ impl SinkWaitingResponse {
                         body_length = Some(BodyLength::Determined(
                             std::str::from_utf8(h.value)
                                 .map_err(|e| {
-                                    io::Error::new(
-                                        ErrorKind::Other,
-                                        format!(
-                                            "Invalid Content-Length header value: {:?}, error={}",
-                                            h.value, e
-                                        ),
-                                    )
+                                    io::Error::other(format!(
+                                        "Invalid Content-Length header value: {:?}, error={}",
+                                        h.value, e
+                                    ))
                                 })?
                                 .parse::<u64>()
                                 .map_err(|e| {
-                                    io::Error::new(
-                                        ErrorKind::Other,
-                                        format!(
-                                            "Invalid Content-Length header value: {:?}, error={}",
-                                            h.value, e
-                                        ),
-                                    )
+                                    io::Error::other(format!(
+                                        "Invalid Content-Length header value: {:?}, error={}",
+                                        h.value, e
+                                    ))
                                 })?,
                         ));
                     }
@@ -623,7 +606,7 @@ impl SinkWaitingResponse {
 
         let response = builder
             .body(())
-            .map_err(|e| io::Error::new(ErrorKind::Other, format!("Invalid response: {}", e)))?
+            .map_err(|e| io::Error::other(format!("Invalid response: {}", e)))?
             .into_parts()
             .0;
 
@@ -670,10 +653,7 @@ fn serialize_request(request: &RequestHeaders) -> io::Result<(Bytes, BodyLength)
     );
 
     let target_host = request.uri.authority().ok_or_else(|| {
-        io::Error::new(
-            ErrorKind::Other,
-            format!("Request URI lacks host name: {:?}", request.uri),
-        )
+        io::Error::other(format!("Request URI lacks host name: {:?}", request.uri))
     })?;
 
     let mut host_inserted = false;
@@ -689,10 +669,7 @@ fn serialize_request(request: &RequestHeaders) -> io::Result<(Bytes, BodyLength)
                     serialized.put(target_host.as_str().as_bytes());
                     serialized.put("\r\n".as_bytes());
                 } else {
-                    return Err(io::Error::new(
-                        ErrorKind::Other,
-                        "Request has multiple Host headers",
-                    ));
+                    return Err(io::Error::other("Request has multiple Host headers"));
                 }
             }
             name => {
@@ -702,23 +679,16 @@ fn serialize_request(request: &RequestHeaders) -> io::Result<(Bytes, BodyLength)
                             value
                                 .to_str()
                                 .map_err(|_| {
-                                    io::Error::new(
-                                        ErrorKind::Other,
-                                        "Invalid Content-Length header value",
-                                    )
+                                    io::Error::other("Invalid Content-Length header value")
                                 })?
                                 .parse::<u64>()
                                 .map_err(|_| {
-                                    io::Error::new(
-                                        ErrorKind::Other,
-                                        "Invalid Content-Length header value",
-                                    )
+                                    io::Error::other("Invalid Content-Length header value")
                                 })?,
                         ))
                     }
                     ("content-length", Some(BodyLength::Determined(_))) => {
-                        return Err(io::Error::new(
-                            ErrorKind::Other,
+                        return Err(io::Error::other(
                             "Request has multiple Content-Length headers",
                         ))
                     }

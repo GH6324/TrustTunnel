@@ -88,7 +88,7 @@ impl Tunnel {
             x = shutdown_notification.wait() => {
                 match x {
                     Ok(_) => self.downstream.graceful_shutdown().await,
-                    Err(e) => Err(io::Error::new(ErrorKind::Other, format!("{}", e))),
+                    Err(e) => Err(io::Error::other(format!("{}", e))),
                 }
             }
             x = self.listen_inner() => x,

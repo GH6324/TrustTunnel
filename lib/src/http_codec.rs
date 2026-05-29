@@ -5,7 +5,6 @@ use bytes::Bytes;
 use http::uri::Authority;
 use http::{Response, StatusCode};
 use std::io;
-use std::io::ErrorKind;
 use std::net::IpAddr;
 
 pub(crate) type RequestHeaders = http::request::Parts;
@@ -49,7 +48,7 @@ pub(crate) trait PendingRequest: Send {
     fn client_address(&self) -> io::Result<IpAddr>;
 
     /// Get the authorization info if some
-    fn auth_info(&self) -> io::Result<Option<authentication::Source>> {
+    fn auth_info(&self) -> io::Result<Option<authentication::Source<'_>>> {
         let header = match self
             .request()
             .headers
@@ -65,24 +64,19 @@ pub(crate) trait PendingRequest: Send {
             .and_then(|s| s.strip_prefix("Basic "))
             .map(|s| Some(authentication::Source::ProxyBasic(s.into())))
             .ok_or_else(|| {
-                io::Error::new(
-                    ErrorKind::Other,
-                    format!(
-                        "Unexpected authorization header: {:?}",
-                        net_utils::scrub_request(self.request())
-                    ),
-                )
+                io::Error::other(format!(
+                    "Unexpected authorization header: {:?}",
+                    net_utils::scrub_request(self.request())
+                ))
             })
     }
 
     /// Get the request authority
     fn authority(&self) -> io::Result<&Authority> {
-        self.request().uri.authority().ok_or_else(|| {
-            io::Error::new(
-                ErrorKind::Other,
-                format!("Authority not found: {:?}", self.request()),
-            )
-        })
+        self.request()
+            .uri
+            .authority()
+            .ok_or_else(|| io::Error::other(format!("Authority not found: {:?}", self.request())))
     }
 
     /// Get the user agent

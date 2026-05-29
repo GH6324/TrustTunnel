@@ -186,7 +186,7 @@ impl forwarder::UdpDatagramPipeShared for MultiplexerShared {
             .unwrap()
             .entry(forwarder::UdpDatagramMeta::from(meta))
         {
-            Entry::Occupied(_) => Err(io::Error::new(ErrorKind::Other, "Already present")),
+            Entry::Occupied(_) => Err(io::Error::other("Already present")),
             Entry::Vacant(e) => {
                 let metrics_guard = self.context.metrics.clone().outbound_udp_socket_counter();
                 e.insert(Connection {
@@ -260,10 +260,10 @@ impl datagram_pipe::Sink for MultiplexerSink {
                         conn.being_listened = true;
                     }
                     Err(e) => {
-                        return Err(io::Error::new(
-                            ErrorKind::Other,
-                            format!("Failed to wake up UDP listener task: {}", e),
-                        ))
+                        return Err(io::Error::other(format!(
+                            "Failed to wake up UDP listener task: {}",
+                            e
+                        )))
                     }
                 }
             }

@@ -1,7 +1,6 @@
 use std::collections::HashSet;
 use std::fmt::{Debug, Formatter};
 use std::io;
-use std::io::ErrorKind;
 use std::net::{Ipv4Addr, SocketAddr, ToSocketAddrs};
 use std::path::Path;
 use std::time::Duration;
@@ -955,7 +954,7 @@ impl SettingsBuilder {
         self.settings.listen_address = addr
             .to_socket_addrs()?
             .next()
-            .ok_or_else(|| io::Error::new(ErrorKind::Other, "Address is parsed to empty list"))?;
+            .ok_or_else(|| io::Error::other("Address is parsed to empty list"))?;
         Ok(self)
     }
 
@@ -1182,7 +1181,7 @@ impl Socks5ForwarderSettingsBuilder {
         self.settings.address = v
             .to_socket_addrs()?
             .next()
-            .ok_or_else(|| io::Error::new(ErrorKind::Other, "Address is parsed to empty list"))?;
+            .ok_or_else(|| io::Error::other("Address is parsed to empty list"))?;
         Ok(self)
     }
 
@@ -1388,7 +1387,7 @@ impl ReverseProxySettingsBuilder {
         self.settings.server_address = v
             .to_socket_addrs()?
             .next()
-            .ok_or_else(|| io::Error::new(ErrorKind::Other, "Address is parsed to empty list"))?;
+            .ok_or_else(|| io::Error::other("Address is parsed to empty list"))?;
         Ok(self)
     }
 
@@ -1456,7 +1455,7 @@ impl MetricsSettingsBuilder {
         self.settings.address = addr
             .to_socket_addrs()?
             .next()
-            .ok_or_else(|| io::Error::new(ErrorKind::Other, "Address is parsed to empty list"))?;
+            .ok_or_else(|| io::Error::other("Address is parsed to empty list"))?;
         Ok(self)
     }
 
@@ -1481,7 +1480,7 @@ impl Default for ForwardProtocolSettings {
 fn validate_file_path(path: &str) -> io::Result<()> {
     match std::fs::metadata(Path::new(path))? {
         m if m.is_file() => Ok(()),
-        _ => Err(io::Error::new(ErrorKind::Other, "Not a file")),
+        _ => Err(io::Error::other("Not a file")),
     }
 }
 

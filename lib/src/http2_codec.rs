@@ -387,5 +387,5 @@ fn h2_to_io_error(e: h2::Error) -> io::Error {
     }
 
     e.into_io()
-        .unwrap_or_else(|| io::Error::new(ErrorKind::Other, format!("HTTP2 error: {:?}", reason)))
+        .unwrap_or_else(|| io::Error::other(format!("HTTP2 error: {:?}", reason)))
 }

@@ -99,24 +99,18 @@ impl forwarder::UdpDatagramPipeShared for DatagramTransceiverShared {
             Ok(socks5_client::ConnectResult::TcpConnection(_)) => unreachable!(),
             Ok(socks5_client::ConnectResult::UdpAssociation(x)) => Arc::new(x),
             Ok(socks5_client::ConnectResult::Failure(x)) => {
-                return Err(io::Error::new(
-                    ErrorKind::Other,
-                    format!("SOCKS server replied with error code: {:?}", x),
-                ))
+                return Err(io::Error::other(format!(
+                    "SOCKS server replied with error code: {:?}",
+                    x
+                )))
             }
             Err(socks5_client::Error::Io(x)) => return Err(x),
             Err(socks5_client::Error::Protocol(x)) => {
-                return Err(io::Error::new(
-                    ErrorKind::Other,
-                    format!("SOCKS protocol error: {}", x),
-                ))
+                return Err(io::Error::other(format!("SOCKS protocol error: {}", x)))
             }
             Err(socks5_client::Error::Authentication(x)) => {
                 self.associations.lock().unwrap().clear();
-                return Err(io::Error::new(
-                    ErrorKind::Other,
-                    format!("Authentication error: {}", x),
-                ));
+                return Err(io::Error::other(format!("Authentication error: {}", x)));
             }
         };
 
@@ -134,10 +128,7 @@ impl forwarder::UdpDatagramPipeShared for DatagramTransceiverShared {
             Ok(_) | Err(mpsc::error::TrySendError::Full(_)) => Ok(()),
             Err(mpsc::error::TrySendError::Closed(_)) => {
                 self.associations.lock().unwrap().remove(&meta.source);
-                Err(io::Error::new(
-                    ErrorKind::Other,
-                    "Source waker is unexpectedly closed",
-                ))
+                Err(io::Error::other("Source waker is unexpectedly closed"))
             }
         }
     }
@@ -192,7 +183,7 @@ impl Forwarder for Socks5Forwarder {
                     }
                 })
                 .transpose()
-                .map_err(|x| io::Error::new(ErrorKind::Other, x))?,
+                .map_err(io::Error::other)?,
             id,
         });
 
@@ -329,7 +320,7 @@ impl forwarder::DatagramMultiplexerAuthenticator for DatagramMuxAuthenticator {
                 } else {
                     make_auth(auth)
                 }
-                .map_err(|x| tunnel::ConnectionError::Io(io::Error::new(ErrorKind::Other, x)))?,
+                .map_err(|x| tunnel::ConnectionError::Io(io::Error::other(x)))?,
             ),
             socks5_client::Request::UdpAssociate,
         )
@@ -588,10 +579,10 @@ fn socks_to_io_error(err: socks5_client::Error) -> io::Error {
     match err {
         socks5_client::Error::Io(e) => e,
         socks5_client::Error::Protocol(e) => {
-            io::Error::new(ErrorKind::Other, format!("SOCKS protocol error: {}", e))
+            io::Error::other(format!("SOCKS protocol error: {}", e))
         }
         socks5_client::Error::Authentication(e) => {
-            io::Error::new(ErrorKind::Other, format!("Authentication error: {}", e))
+            io::Error::other(format!("Authentication error: {}", e))
         }
     }
 }

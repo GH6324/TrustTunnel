@@ -234,13 +234,10 @@ impl downstream::PendingTcpConnectRequest for TcpConnection {
             Err(_) => {
                 let port = if request.request().method == http::Method::CONNECT {
                     authority.port_u16().ok_or_else(|| {
-                        io::Error::new(
-                            ErrorKind::Other,
-                            format!(
-                                "Unexpected authority port: request={:?}",
-                                net_utils::scrub_request(request.request())
-                            ),
-                        )
+                        io::Error::other(format!(
+                            "Unexpected authority port: request={:?}",
+                            net_utils::scrub_request(request.request())
+                        ))
                     })?
                 } else {
                     authority
@@ -302,7 +299,7 @@ impl downstream::PendingRequest for PendingRequest {
 }
 
 impl downstream::PendingMultiplexedRequest for PendingRequest {
-    fn auth_info(&self) -> io::Result<Option<authentication::Source>> {
+    fn auth_info(&self) -> io::Result<Option<authentication::Source<'_>>> {
         self.stream.request().auth_info()
     }
 }

@@ -132,13 +132,10 @@ where
                             .header("Connection", "close")
                             .body(())
                             .map_err(|e| {
-                                io::Error::new(
-                                    ErrorKind::Other,
-                                    format!(
-                                        "Failed to build \"Expectation Failed\" response: {}",
-                                        e
-                                    ),
-                                )
+                                io::Error::other(format!(
+                                    "Failed to build \"Expectation Failed\" response: {}",
+                                    e
+                                ))
                             })?
                             .into_parts()
                             .0,
@@ -316,12 +313,7 @@ impl http_codec::PendingRespond for StreamSink {
             .as_ref()
             .ok_or_else(|| io::Error::from(ErrorKind::UnexpectedEof))?
             .try_send(encode_response(response))
-            .map_err(|e| {
-                io::Error::new(
-                    ErrorKind::Other,
-                    format!("Failed to put response in queue: {}", e),
-                )
-            })
+            .map_err(|e| io::Error::other(format!("Failed to put response in queue: {}", e)))
     }
 
     fn send_response(
@@ -346,12 +338,7 @@ impl http_codec::PendingRespond for StreamSink {
             .as_ref()
             .ok_or_else(|| io::Error::from(ErrorKind::UnexpectedEof))?
             .try_send(encode_response(response))
-            .map_err(|e| {
-                io::Error::new(
-                    ErrorKind::Other,
-                    format!("Failed to put response in queue: {}", e),
-                )
-            })?;
+            .map_err(|e| io::Error::other(format!("Failed to put response in queue: {}", e)))?;
 
         if eof {
             self.eof()?;
@@ -544,29 +531,31 @@ pub(crate) fn decode_request(
     match request.parse(&buffer) {
         Ok(httparse::Status::Complete(idx)) => {
             let mut request_builder = http::request::Request::builder()
-                .version(httparse_to_http_version(request.version.ok_or_else(
-                    || io::Error::new(ErrorKind::Other, "Version not found"),
-                )?))
+                .version(httparse_to_http_version(
+                    request
+                        .version
+                        .ok_or_else(|| io::Error::other("Version not found"))?,
+                ))
                 .method(
                     request
                         .method
-                        .ok_or_else(|| io::Error::new(ErrorKind::Other, "Method not found"))?,
+                        .ok_or_else(|| io::Error::other("Method not found"))?,
                 );
 
             let mut uri = match request.path {
                 None => {
-                    return Err(io::Error::new(
-                        ErrorKind::Other,
-                        format!("Invalid path: {:?}", request.path),
-                    ))
+                    return Err(io::Error::other(format!(
+                        "Invalid path: {:?}",
+                        request.path
+                    )))
                 }
                 Some(p) => match http::uri::Uri::from_str(p) {
                     Ok(uri) => uri,
                     Err(e) => {
-                        return Err(io::Error::new(
-                            ErrorKind::Other,
-                            format!("Invalid path: path={:?}, error={}", request.path, e),
-                        ))
+                        return Err(io::Error::other(format!(
+                            "Invalid path: path={:?}, error={}",
+                            request.path, e
+                        )))
                     }
                 },
             };
@@ -580,15 +569,12 @@ pub(crate) fn decode_request(
                             .path_and_query(request.path.unwrap())
                             .build()
                             .map_err(|e| {
-                                io::Error::new(
-                                    ErrorKind::Other,
-                                    format!(
-                                        "Unexpected URI: error={}, authority={}, path={:?}",
-                                        e,
-                                        utils::hex_dump(h.value),
-                                        request.path,
-                                    ),
-                                )
+                                io::Error::other(format!(
+                                    "Unexpected URI: error={}, authority={}, path={:?}",
+                                    e,
+                                    utils::hex_dump(h.value),
+                                    request.path,
+                                ))
                             })?
                     }
                     _ => request_builder = request_builder.header(h.name, h.value),
@@ -600,9 +586,7 @@ pub(crate) fn decode_request(
             Ok(DecodeStatus::Complete(
                 request_builder
                     .body(())
-                    .map_err(|e| {
-                        io::Error::new(ErrorKind::Other, format!("Invalid request: {}", e))
-                    })?
+                    .map_err(|e| io::Error::other(format!("Invalid request: {}", e)))?
                     .into_parts()
                     .0,
                 buffer.split_off(idx),
@@ -611,11 +595,8 @@ pub(crate) fn decode_request(
         Ok(httparse::Status::Partial) if buffer.len() < raw_buffer_cap => {
             Ok(DecodeStatus::Partial(buffer))
         }
-        Ok(httparse::Status::Partial) => Err(io::Error::new(
-            ErrorKind::Other,
-            "Too long HTTP request headers",
-        )),
-        Err(e) => Err(io::Error::new(ErrorKind::Other, e.to_string())),
+        Ok(httparse::Status::Partial) => Err(io::Error::other("Too long HTTP request headers")),
+        Err(e) => Err(io::Error::other(e.to_string())),
     }
 }
 
@@ -629,13 +610,15 @@ pub(crate) fn decode_response(
     match response.parse(&buffer) {
         Ok(httparse::Status::Complete(idx)) => {
             let mut response_builder = http::response::Response::builder()
-                .version(httparse_to_http_version(response.version.ok_or_else(
-                    || io::Error::new(ErrorKind::Other, "Version not found"),
-                )?))
+                .version(httparse_to_http_version(
+                    response
+                        .version
+                        .ok_or_else(|| io::Error::other("Version not found"))?,
+                ))
                 .status(
                     response
                         .code
-                        .ok_or_else(|| io::Error::new(ErrorKind::Other, "Status not found"))?,
+                        .ok_or_else(|| io::Error::other("Status not found"))?,
                 );
 
             for h in response.headers {
@@ -645,9 +628,7 @@ pub(crate) fn decode_response(
             Ok(DecodeStatus::Complete(
                 response_builder
                     .body(())
-                    .map_err(|e| {
-                        io::Error::new(ErrorKind::Other, format!("Invalid response: {}", e))
-                    })?
+                    .map_err(|e| io::Error::other(format!("Invalid response: {}", e)))?
                     .into_parts()
                     .0,
                 buffer.split_off(idx),
@@ -656,10 +637,7 @@ pub(crate) fn decode_response(
         Ok(httparse::Status::Partial) if buffer.len() < raw_buffer_cap => {
             Ok(DecodeStatus::Partial(buffer))
         }
-        Ok(httparse::Status::Partial) => Err(io::Error::new(
-            ErrorKind::Other,
-            "Too long HTTP response headers",
-        )),
-        Err(e) => Err(io::Error::new(ErrorKind::Other, e.to_string())),
+        Ok(httparse::Status::Partial) => Err(io::Error::other("Too long HTTP response headers")),
+        Err(e) => Err(io::Error::other(e.to_string())),
     }
 }

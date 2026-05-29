@@ -5,7 +5,6 @@ use crate::{core, http_codec, log_id, log_utils};
 use bytes::Bytes;
 use prometheus::Encoder;
 use std::io;
-use std::io::ErrorKind;
 use std::sync::atomic::{AtomicU64, Ordering};
 use std::sync::Arc;
 use tokio::net::{TcpListener, TcpStream};
@@ -172,7 +171,7 @@ pub(crate) async fn listen(
         x = shutdown_notification.wait() => {
             match x {
                 Ok(_) => Ok(()),
-                Err(e) => Err(io::Error::new(ErrorKind::Other, format!("{}", e))),
+                Err(e) => Err(io::Error::other(format!("{}", e))),
             }
         }
         x = listen_inner(context, log_chain) => x,
@@ -314,6 +313,6 @@ async fn handle_metrics_collect(
 fn prometheus_to_io_error(e: prometheus::Error) -> io::Error {
     match e {
         prometheus::Error::Io(e) => e,
-        e => io::Error::new(ErrorKind::Other, e.to_string()),
+        e => io::Error::other(e.to_string()),
     }
 }

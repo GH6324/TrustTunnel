@@ -156,9 +156,10 @@ impl<F: Fn(SimplexDirection, usize) + Send> SimplexPipe<F> {
                     Ok(x)
                 } else {
                     self.sink.wait_writable().await?;
-                    let pending = self.pending_chunk.take().ok_or_else(|| {
-                        io::Error::new(ErrorKind::Other, "Pending chunk is unexpectedly absent")
-                    })?;
+                    let pending = self
+                        .pending_chunk
+                        .take()
+                        .ok_or_else(|| io::Error::other("Pending chunk is unexpectedly absent"))?;
                     log_dir!(
                         trace,
                         self.sink.id(),

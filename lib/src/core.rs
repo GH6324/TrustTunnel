@@ -187,9 +187,9 @@ impl Core {
             let shutdown = self.context.shutdown.lock().unwrap();
             (
                 shutdown.notification_handler(),
-                shutdown.completion_guard().ok_or_else(|| {
-                    io::Error::new(ErrorKind::Other, "Shutdown is already submitted")
-                })?,
+                shutdown
+                    .completion_guard()
+                    .ok_or_else(|| io::Error::other("Shutdown is already submitted"))?,
             )
         };
 
@@ -197,14 +197,14 @@ impl Core {
 
         tokio::select! {
             x = shutdown_notification.wait() => {
-                x.map_err(|e| io::Error::new(ErrorKind::Other, format!("{}", e)))
+                x.map_err(|e| io::Error::other(format!("{}", e)))
             },
             x = fatal_error_rx.changed() => match x {
                 Ok(()) => match fatal_error_rx.borrow().clone() {
                     Some(e) => Err(e.into_io_error()),
-                    None => Err(io::Error::new(ErrorKind::Other, "Unknown fatal error reported")),
+                    None => Err(io::Error::other("Unknown fatal error reported")),
                 },
-                Err(_) => Err(io::Error::new(ErrorKind::Other, "Fatal error channel is unexpectedly closed")),
+                Err(_) => Err(io::Error::other("Fatal error channel is unexpectedly closed")),
             },
             x = futures::future::try_join4(
                 listen_tcp,
@@ -223,12 +223,9 @@ impl Core {
         let mut demux = self.context.tls_demux.write().unwrap();
 
         if !settings.is_built() {
-            settings.validate().map_err(|e| {
-                io::Error::new(
-                    ErrorKind::Other,
-                    format!("Settings validation failure: {:?}", e),
-                )
-            })?;
+            settings
+                .validate()
+                .map_err(|e| io::Error::other(format!("Settings validation failure: {:?}", e)))?;
         }
 
         *demux = TlsDemux::new(&self.context.settings, &settings)?;

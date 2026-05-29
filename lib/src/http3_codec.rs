@@ -206,10 +206,10 @@ impl Http3Codec {
             // `Full` is not considered as an error in this case, as the stream does not need
             // multiple `readable` messages in the queue
             Ok(_) | Err(mpsc::error::TrySendError::Full(_)) => Ok(()),
-            Err(e) => Err(io::Error::new(
-                ErrorKind::Other,
-                format!("Failed to send stream readable event: {}", e),
-            )),
+            Err(e) => Err(io::Error::other(format!(
+                "Failed to send stream readable event: {}",
+                e
+            ))),
         }
     }
 
@@ -231,7 +231,7 @@ impl Http3Codec {
                         // `Full` is not considered as an error in this case, as the stream does not need
                         // multiple `writable` messages in the queue
                         Ok(_) | Err(mpsc::error::TrySendError::Full(_)) => Ok(()),
-                        Err(e) => Err(io::Error::new(ErrorKind::Other, e)),
+                        Err(e) => Err(io::Error::other(e)),
                     }
                 }
                 Err(e) => Err(e),
@@ -274,8 +274,8 @@ impl HttpCodec for Http3Codec {
                     },
                     message = wait_stream_message, if has_streams => match message {
                         Some(message) => Some(FiredEvent::Stream(message)),
-                        None => return Err(io::Error::new(
-                            ErrorKind::Other, "Inconsistent state: All stream event senders are closed"
+                        None => return Err(io::Error::other(
+                            "Inconsistent state: All stream event senders are closed"
                         )),
                     },
                 }
@@ -411,10 +411,7 @@ impl StreamSink {
                         self.codec_tx
                             .send(StreamMessage::Shutdown(self.stream_id, None))
                             .map_err(|e| {
-                                io::Error::new(
-                                    ErrorKind::Other,
-                                    format!("Failed to send shutdown message: {}", e),
-                                )
+                                io::Error::other(format!("Failed to send shutdown message: {}", e))
                             })?;
                     }
                 }
@@ -444,7 +441,7 @@ impl StreamSink {
                         Some(_) => continue,
                     }
                 }
-                Err(e) => return Err(io::Error::new(ErrorKind::Other, e.to_string())),
+                Err(e) => return Err(io::Error::other(e.to_string())),
             }
         }
     }
@@ -547,7 +544,7 @@ impl http_codec::DroppingSink for StreamSink {
         match self.socket.stream_capacity(self.stream_id) {
             Ok(n) if n >= net_utils::http3_data_frame_overhead(data.len()) + data.len() => (),
             Ok(_) => return Ok(datagram_pipe::SendStatus::Dropped),
-            Err(e) => return Err(io::Error::new(ErrorKind::Other, e.to_string())),
+            Err(e) => return Err(io::Error::other(e.to_string())),
         }
 
         let unsent = self.socket.write(self.stream_id, data)?;

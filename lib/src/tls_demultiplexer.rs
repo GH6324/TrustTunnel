@@ -164,18 +164,17 @@ impl TlsDemux {
             } else {
                 let mut chain = Vec::with_capacity(cert_chain.len());
                 for c in &cert_chain {
-                    chain.push(X509::from_der(c.as_ref()).map_err(|e| {
-                        io::Error::new(io::ErrorKind::Other, format!("X509 parse error: {e}"))
-                    })?);
+                    chain.push(
+                        X509::from_der(c.as_ref())
+                            .map_err(|e| io::Error::other(format!("X509 parse error: {e}")))?,
+                    );
                 }
 
                 let key_bytes = key.secret_der();
                 let boring_key: PKey<Private> = PKey::private_key_from_der(key_bytes)
                     .or_else(|_| PKey::private_key_from_pkcs8(key_bytes))
                     .or_else(|_| PKey::private_key_from_pem(key_bytes))
-                    .map_err(|e| {
-                        io::Error::new(io::ErrorKind::Other, format!("PKey parse error: {e}"))
-                    })?;
+                    .map_err(|e| io::Error::other(format!("PKey parse error: {e}")))?;
 
                 BoringIdentity {
                     chain: Arc::new(chain),

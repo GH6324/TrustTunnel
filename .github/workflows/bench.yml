@@ -48,7 +48,7 @@ jobs:
     steps:
       - name: Resolve inputs
         id: inputs
-        uses: actions/github-script@v7
+        uses: actions/github-script@v8
         with:
           script: |
             let ref = '', clientRepo = '', clientRef = '', prNumber = '', tunnelType = 'ag';
@@ -84,12 +84,12 @@ jobs:
             core.setOutput('tunnel_type', tunnelType);
 
       - name: Checkout endpoint
-        uses: actions/checkout@v4
+        uses: actions/checkout@v6
         with:
           ref: ${{ steps.inputs.outputs.ref }}
 
       - name: Checkout client
-        uses: actions/checkout@v4
+        uses: actions/checkout@v6
         with:
           repository: ${{ steps.inputs.outputs.client_repo }}
           ref: ${{ steps.inputs.outputs.client_ref }}
@@ -107,7 +107,7 @@ jobs:
 
       - name: Upload results
         if: always()
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7
         with:
           name: bench-results
           path: bench/results/
@@ -122,13 +122,13 @@ jobs:
     if: needs.bench.outputs.pr_number != ''
     steps:
       - name: Download results
-        uses: actions/download-artifact@v4
+        uses: actions/download-artifact@v8
         with:
           name: bench-results
           path: bench/results/
 
       - name: Post PR comment
-        uses: actions/github-script@v7
+        uses: actions/github-script@v8
         with:
           github-token: ${{ github.event_name == 'repository_dispatch' && secrets.CLIENT_COMMENT_TOKEN || secrets.GITHUB_TOKEN }}
           script: |

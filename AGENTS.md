@@ -12,7 +12,7 @@ traffic.
 
 ## Technical Context
 
-- **Language/Version**: Rust 1.85 (edition 2021), pinned via
+- **Language/Version**: Rust 1.95 (edition 2021), pinned via
   `rust-toolchain.toml`
 - **Primary Dependencies**: tokio, rustls, quiche (QUIC/HTTP3), h2, boring
   (BoringSSL), hyper, clap, sentry, prometheus, rcgen, instant-acme

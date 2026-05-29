@@ -479,7 +479,7 @@ pub(crate) fn skip_ipv6_header(mut packet: Bytes) -> Option<(libc::c_int, Bytes)
 /// in accordance with https://datatracker.ietf.org/doc/html/rfc1071
 pub(crate) fn rfc1071_checksum(bytes: &[u8]) -> u16 {
     let mut sum = 0_u32;
-    let is_even = bytes.len() % 2 == 0;
+    let is_even = bytes.len().is_multiple_of(2);
     for i in (0..bytes.len()).step_by(2) {
         sum += (bytes[i] as u32) << 8;
         if is_even || i + 1 < bytes.len() - 1 {

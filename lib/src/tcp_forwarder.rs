@@ -116,8 +116,7 @@ impl TcpConnector for TcpForwarder {
 
                 match status {
                     None => {
-                        return Err(io_to_connection_error(io::Error::new(
-                            ErrorKind::Other,
+                        return Err(io_to_connection_error(io::Error::other(
                             "Resolved to empty list",
                         )))
                     }
@@ -192,10 +191,7 @@ impl pipe::Sink for StreamTx {
 
     fn write(&mut self, mut data: Bytes) -> io::Result<Bytes> {
         if self.eof_pending {
-            return Err(io::Error::new(
-                ErrorKind::Other,
-                "Already shut down".to_string(),
-            ));
+            return Err(io::Error::other("Already shut down".to_string()));
         }
 
         while !data.is_empty() {
@@ -218,10 +214,7 @@ impl pipe::Sink for StreamTx {
 
     async fn wait_writable(&mut self) -> io::Result<()> {
         if self.eof_pending {
-            return Err(io::Error::new(
-                ErrorKind::Other,
-                "Already shut down".to_string(),
-            ));
+            return Err(io::Error::other("Already shut down".to_string()));
         }
 
         self.tx.writable().await

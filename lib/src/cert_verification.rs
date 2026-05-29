@@ -20,19 +20,12 @@ impl CertificateVerifier {
     pub fn new() -> io::Result<Self> {
         let mut root_store = RootCertStore::empty();
 
-        let native_certs = rustls_native_certs::load_native_certs().map_err(|e| {
-            io::Error::new(
-                io::ErrorKind::Other,
-                format!("failed to load system CAs: {}", e),
-            )
-        })?;
+        let native_certs = rustls_native_certs::load_native_certs()
+            .map_err(|e| io::Error::other(format!("failed to load system CAs: {}", e)))?;
         for cert in native_certs {
-            root_store.add(cert).map_err(|e| {
-                io::Error::new(
-                    io::ErrorKind::Other,
-                    format!("failed to add CA cert: {}", e),
-                )
-            })?;
+            root_store
+                .add(cert)
+                .map_err(|e| io::Error::other(format!("failed to add CA cert: {}", e)))?;
         }
 
         Ok(Self {

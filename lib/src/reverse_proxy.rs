@@ -127,7 +127,7 @@ async fn handle_stream(
         .await
         .map_err(|e| match e {
             tunnel::ConnectionError::Io(e) => e,
-            _ => io::Error::new(ErrorKind::Other, format!("{}", e)),
+            _ => io::Error::other(format!("{}", e)),
         })?;
 
     let mut request_headers = request.clone_request();
@@ -279,10 +279,10 @@ async fn handle_stream(
             }
             let response = response_opt
                 .take()
-                .ok_or_else(|| io::Error::new(ErrorKind::Other, "missing response"))?;
+                .ok_or_else(|| io::Error::other("missing response"))?;
             let respond = respond_opt
                 .take()
-                .ok_or_else(|| io::Error::new(ErrorKind::Other, "missing respond"))?;
+                .ok_or_else(|| io::Error::other("missing respond"))?;
             *client_sink = Some(respond.send_response(response, false)?.into_pipe_sink());
             Ok(())
         };
@@ -443,7 +443,7 @@ fn send_bad_gateway(
         .status(http::StatusCode::BAD_GATEWAY)
         .version(version)
         .body(())
-        .map_err(|e| io::Error::new(ErrorKind::Other, format!("bad gateway: {}", e)))?;
+        .map_err(|e| io::Error::other(format!("bad gateway: {}", e)))?;
     let (parts, _) = response.into_parts();
     respond.send_response(parts, true).map(|_| ())
 }

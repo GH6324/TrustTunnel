@@ -180,7 +180,7 @@ impl QuicMultiplexer {
                     },
                     r = wait_udp_send => match r {
                         Some(m) => Some(Event::UdpSend(m)),
-                        None => return Err(io::Error::new(ErrorKind::Other, "Message receiving channel closed unexpectedly")),
+                        None => return Err(io::Error::other("Message receiving channel closed unexpectedly")),
                     },
                     _ = &mut wait_timeout, if self.closest_deadline.is_some_and(|x| x > Instant::now()) => None,
                 }
@@ -265,13 +265,13 @@ impl QuicMultiplexer {
                 .socket_tx
                 .iter()
                 .cycle()
-                .zip(entry.messages.into_iter())
+                .zip(entry.messages)
                 .try_for_each(|(sender, msg)| match sender.try_send(msg) {
                     // `Full` is not considered as an error in this case, as the connection does not need
                     // multiple `poll` messages in the queue
                     Ok(_) | Err(mpsc::error::TrySendError::Full(_)) => Ok(()),
                     Err(mpsc::error::TrySendError::Closed(_)) => {
-                        Err(io::Error::new(ErrorKind::Other, "Channel closed"))
+                        Err(io::Error::other("Channel closed"))
                     }
                 });
 
@@ -394,34 +394,27 @@ impl QuicMultiplexer {
         header: &quiche::Header<'_>,
     ) -> io::Result<UnknownPacketStatus> {
         if !matches!(header.ty, quiche::Type::Initial) {
-            return Err(io::Error::new(
-                ErrorKind::Other,
-                format!("Unexpected packet type: {:?}", header),
-            ));
+            return Err(io::Error::other(format!(
+                "Unexpected packet type: {:?}",
+                header
+            )));
         }
 
         if !quiche::version_is_supported(header.version) {
             log_id!(trace, self.id, "Doing version negotiation: {:?}", header);
             let mut out = [0; net_utils::MAX_UDP_PAYLOAD_SIZE];
-            let n =
-                quiche::negotiate_version(&header.scid, &header.dcid, &mut out).map_err(|e| {
-                    io::Error::new(
-                        ErrorKind::Other,
-                        format!("Version negotiation failed: {}", e),
-                    )
-                })?;
+            let n = quiche::negotiate_version(&header.scid, &header.dcid, &mut out)
+                .map_err(|e| io::Error::other(format!("Version negotiation failed: {}", e)))?;
             return self
                 .socket
                 .try_send_to(&out[..n], *peer)
                 .map(|_| UnknownPacketStatus::Skip);
         }
 
-        let quic_token = header.token.as_ref().ok_or_else(|| {
-            io::Error::new(
-                ErrorKind::Other,
-                "Invalid packet: initial packet must contain token",
-            )
-        })?;
+        let quic_token = header
+            .token
+            .as_ref()
+            .ok_or_else(|| io::Error::other("Invalid packet: initial packet must contain token"))?;
 
         lazy_static! {
             static ref CONN_ID_SEED: ring::hmac::Key = {
@@ -446,7 +439,7 @@ impl QuicMultiplexer {
                 header.version,
                 &mut out,
             )
-            .map_err(|e| io::Error::new(ErrorKind::Other, format!("Retry failed: {}", e)))?;
+            .map_err(|e| io::Error::other(format!("Retry failed: {}", e)))?;
             return self
                 .socket
                 .try_send_to(&out[..n], *peer)
@@ -454,8 +447,7 @@ impl QuicMultiplexer {
         }
 
         if scid.len() != header.dcid.len() {
-            return Err(io::Error::new(
-                ErrorKind::Other,
+            return Err(io::Error::other(
                 "Invalid packet: unexpected destination connection ID",
             ));
         }
@@ -474,12 +466,7 @@ impl QuicMultiplexer {
         let mut quic_config =
             make_quic_config_with_domain_contexts(&self.core_settings, self.tls_demux.clone())?;
         let mut quic_conn = quiche::accept(scid, odcid, local_address, *peer, &mut quic_config)
-            .map_err(|e| {
-                io::Error::new(
-                    ErrorKind::Other,
-                    format!("Failed to accept QUIC connection: {}", e),
-                )
-            })?;
+            .map_err(|e| io::Error::other(format!("Failed to accept QUIC connection: {}", e)))?;
 
         quic_recv(
             &mut quic_conn,
@@ -532,10 +519,7 @@ impl QuicMultiplexer {
                 Err(e) => {
                     drop(quic);
                     return Err((
-                        io::Error::new(
-                            ErrorKind::Other,
-                            format!("Failed to open HTTP3 session: {}", e),
-                        ),
+                        io::Error::other(format!("Failed to open HTTP3 session: {}", e)),
                         quic_conn,
                     ));
                 }
@@ -591,12 +575,7 @@ impl QuicMultiplexer {
         (io::Error, Option<Arc<std::sync::Mutex<QuicConnection>>>),
     > {
         let odcid = validate_token(&self.token_prefix, peer, header.token.as_ref().unwrap())
-            .ok_or_else(|| {
-                (
-                    io::Error::new(ErrorKind::Other, "Invalid packet: unexpected token"),
-                    None,
-                )
-            })?;
+            .ok_or_else(|| (io::Error::other("Invalid packet: unexpected token"), None))?;
 
         log_id!(
             debug,
@@ -745,8 +724,7 @@ impl QuicMultiplexer {
                 Ok(m) => self.on_socket_message(m)?,
                 Err(mpsc::error::TryRecvError::Empty) => return Ok(()),
                 Err(mpsc::error::TryRecvError::Disconnected) => {
-                    return Err(io::Error::new(
-                        ErrorKind::Other,
+                    return Err(io::Error::other(
                         "Message receive channel closed unexpectedly",
                     ))
                 }
@@ -854,7 +832,7 @@ impl QuicSocket {
                         break Some(bytes.freeze());
                     }
                     Err(h3::Error::Done) => break None,
-                    Err(e) => return Err(io::Error::new(ErrorKind::Other, e.to_string())),
+                    Err(e) => return Err(io::Error::other(e.to_string())),
                 };
             }
         };
@@ -872,7 +850,7 @@ impl QuicSocket {
         ) {
             Ok(n) => data.advance(n),
             Err(h3::Error::Done | h3::Error::StreamBlocked) => (),
-            Err(e) => return Err(io::Error::new(ErrorKind::Other, e.to_string())),
+            Err(e) => return Err(io::Error::other(e.to_string())),
         }
 
         self.flush_pending_data().map(|_| data)
@@ -883,7 +861,7 @@ impl QuicSocket {
             .lock()
             .unwrap()
             .stream_capacity(stream_id)
-            .map_err(|e| io::Error::new(ErrorKind::Other, e.to_string()))
+            .map_err(|e| io::Error::other(e.to_string()))
     }
 
     pub fn stream_finished(&self, stream_id: u64) -> bool {
@@ -932,7 +910,7 @@ impl QuicSocket {
             .lock()
             .unwrap()
             .close(true, 0, b"bye")
-            .map_err(|e| io::Error::new(ErrorKind::Other, e.to_string()))?;
+            .map_err(|e| io::Error::other(e.to_string()))?;
         self.flush_pending_data()
     }
 
@@ -1051,7 +1029,7 @@ impl QuicSocket {
                 Err(io::Error::new(ErrorKind::UnexpectedEof, "Received GOAWAY"))
             }
             Err(h3::Error::Done) => Ok(None),
-            Err(e) => Err(io::Error::new(ErrorKind::Other, e.to_string())),
+            Err(e) => Err(io::Error::other(e.to_string())),
         }
     }
 
@@ -1085,7 +1063,7 @@ impl QuicSocket {
             })?)
             .body(())
             .map(|r| QuicSocketEvent::Request(stream_id, Box::new(r.into_parts().0)))
-            .map_err(|e| io::Error::new(ErrorKind::Other, format!("Invalid request: {}", e)))
+            .map_err(|e| io::Error::other(format!("Invalid request: {}", e)))
     }
 }
 
@@ -1108,10 +1086,10 @@ impl HandshakingConnection {
         )?;
 
         if quic_conn.is_closed() {
-            return Err(io::Error::new(
-                ErrorKind::Other,
-                format!("[{}] Connection closed", quic_conn.trace_id()),
-            ));
+            return Err(io::Error::other(format!(
+                "[{}] Connection closed",
+                quic_conn.trace_id()
+            )));
         }
 
         if quic_conn.is_draining() {
@@ -1136,7 +1114,7 @@ fn flush_pending_data(
         match quic_conn.send(&mut out) {
             Ok((n, info)) => udp_socket_send_to(udp_socket, &out[..n], &info.to, id)?,
             Err(quiche::Error::Done) => break,
-            Err(e) => return Err(io::Error::new(ErrorKind::Other, e.to_string())),
+            Err(e) => return Err(io::Error::other(e.to_string())),
         }
     }
 
@@ -1184,10 +1162,7 @@ fn quic_recv(
             }
             Ok(())
         }
-        Err(e) => Err(io::Error::new(
-            ErrorKind::Other,
-            format!("QUIC receive failure: {}", e),
-        )),
+        Err(e) => Err(io::Error::other(format!("QUIC receive failure: {}", e))),
     }
 }
 
@@ -1244,12 +1219,7 @@ fn make_quic_config_with_domain_contexts(
     main_ctx.set_private_key_file(&bootstrap_meta.key_path, boring::ssl::SslFiletype::PEM)?;
 
     let mut cfg = quiche::Config::with_boring_ssl_ctx_builder(quiche::PROTOCOL_VERSION, main_ctx)
-        .map_err(|e| {
-        io::Error::new(
-            ErrorKind::Other,
-            format!("Failed to create QUIC config: {}", e),
-        )
-    })?;
+        .map_err(|e| io::Error::other(format!("Failed to create QUIC config: {}", e)))?;
     cfg.set_application_protos(h3::APPLICATION_PROTOCOL)
         .unwrap();
     cfg.set_max_idle_timeout(core_settings.client_listener_timeout.as_millis() as u64);
