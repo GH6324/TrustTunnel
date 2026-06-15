@@ -580,17 +580,20 @@ pub(crate) const fn is_unicast_global_ipv6(ip: &Ipv6Addr) -> bool {
 #[must_use]
 #[inline]
 pub(crate) const fn is_global_ipv6(ip: &Ipv6Addr) -> bool {
-    match ip.segments()[0] & 0x000f {
-        1 // Interface-local scope (same node)
-        | 2 // Link-local scope (same link)
-        | 3 // Subnet-local scope
-        | 4 // Admin-local scope
-        | 5 // Site-local scope (same site)
-        | 8 // Organization-local scope
-        => false,
-        0x0e => true, // Global scope
-        _ => is_unicast_global_ipv6(ip),
+    if ip.is_multicast() {
+        return match ip.segments()[0] & 0x000f {
+            1 // Interface-local scope (same node)
+            | 2 // Link-local scope (same link)
+            | 3 // Subnet-local scope
+            | 4 // Admin-local scope
+            | 5 // Site-local scope (same site)
+            | 8 // Organization-local scope
+            => false,
+            0x0e => true, // Global scope
+            _ => false, // Unknown multicast scope: assume non-global
+        };
     }
+    is_unicast_global_ipv6(ip)
 }
 
 /// Converts an IPv4-mapped (`::ffff:a.b.c.d`) or IPv4-compatible (`::a.b.c.d`)
