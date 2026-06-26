@@ -21,7 +21,6 @@ COPY $CLIENT_DIR /bench/$CLIENT_DIR
 WORKDIR /bench/$CLIENT_DIR/build
 RUN --mount=type=cache,target=/root/.conan2 \
     pipreqs . && \
-    pip install -r ../scripts/requirements.txt && \
     ../scripts/bootstrap_conan_deps.py
 RUN --mount=type=cache,target=/root/.conan2 \
     --mount=type=cache,target=/root/.cargo/registry \

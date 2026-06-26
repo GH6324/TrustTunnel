@@ -1,8 +1,8 @@
 diff --git a/core/src/vpn_manager.cpp b/core/src/vpn_manager.cpp
-index d596dee..e2b8410 100644
+index 6694f6e..6ab4e7e 100644
 --- a/core/src/vpn_manager.cpp
 +++ b/core/src/vpn_manager.cpp
-@@ -711,18 +711,20 @@ static int ssl_verify_callback(
+@@ -715,21 +715,23 @@ static int ssl_verify_callback(const char *host_name, const sockaddr *host_ip, c
  #endif
      }
  
@@ -10,7 +10,10 @@ index d596dee..e2b8410 100644
 -            && (host_name == nullptr || !tls_verify_cert_host_name(ctx.cert, host_name))
 -            && (host_ip == nullptr || host_ip->sa_family == AF_UNSPEC
 -                    || !tls_verify_cert_ip(ctx.cert, SocketAddress(host_ip).str().c_str()))) {
--        log_vpn(vpn, err, "Server host name or IP doesn't match certificate");
+-        log_vpn(vpn, warn, "Server host name or IP doesn't match certificate. Expected host: '{}', IP: '{}'",
+-                host_name ? host_name : "<null>",
+-                (host_ip && host_ip->sa_family != AF_UNSPEC) ? SocketAddress(host_ip).str().c_str() : "<none>");
+-        log_vpn(vpn, warn, "  {}", ag::tls::get_cert_diagnostic_info(ctx.cert, nullptr));
 -#ifdef OPENSSL_IS_BORINGSSL
 -        if (ctx.ssl) {
 -            SSL_send_fatal_alert(ctx.ssl, SSL_AD_CERTIFICATE_UNKNOWN);
@@ -24,7 +27,10 @@ index d596dee..e2b8410 100644
 +//             && (host_name == nullptr || !tls_verify_cert_host_name(ctx.cert, host_name))
 +//             && (host_ip == nullptr || host_ip->sa_family == AF_UNSPEC
 +//                     || !tls_verify_cert_ip(ctx.cert, SocketAddress(host_ip).str().c_str()))) {
-+//         log_vpn(vpn, err, "Server host name or IP doesn't match certificate");
++//         log_vpn(vpn, warn, "Server host name or IP doesn't match certificate. Expected host: '{}', IP: '{}'",
++//                 host_name ? host_name : "<null>",
++//                 (host_ip && host_ip->sa_family != AF_UNSPEC) ? SocketAddress(host_ip).str().c_str() : "<none>");
++//         log_vpn(vpn, warn, "  {}", ag::tls::get_cert_diagnostic_info(ctx.cert, nullptr));
 +// #ifdef OPENSSL_IS_BORINGSSL
 +//         if (ctx.ssl) {
 +//             SSL_send_fatal_alert(ctx.ssl, SSL_AD_CERTIFICATE_UNKNOWN);
