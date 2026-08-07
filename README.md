@@ -461,11 +461,13 @@ Available on [App Store][app-store]* and [Play Store][play-store].
 
 [TrustTunnel-GUI-Client](https://github.com/blazuryk/TrustTunnel-GUI-Client) — Windows GUI client, implemented as a Python wrapper for [TrustTunnel Client][trusttunnel-client]
 
-[Surge](https://nssurge.com) — (Commercial) macOS and iOS network toolbox with experimental TrustTunnel support
+[Surge](https://nssurge.com) — macOS and iOS network toolbox with experimental TrustTunnel support. (Commercial)
 
 [FireTunnel](https://github.com/pnsrc/firetunnel) - A cross-platform client written in QT used modified [TrustTunnel Client](https://github.com/pnsrc/TrustTunnelClient/)
 
 [FreeTunnel](https://github.com/dimmmmmmmer/freetunnel) — A free, open-source desktop client for Windows, macOS, and Linux with a native Qt 6 interface, built on the official [TrustTunnel Client][trusttunnel-client]. One-click connect, split tunneling, kill switch, system tray, and signed auto-updates.
+
+[Shadowrocket](https://shadowlaunch.com) — Rule based proxy utility client for iPhone/iPad with TrustTunnel support. (Commercial)
 
 ## See Also
 
