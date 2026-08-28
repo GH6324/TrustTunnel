@@ -35,12 +35,6 @@ pub enum Status {
 pub trait Authenticator: Send + Sync {
     /// Authenticate client
     fn authenticate(&self, source: &Source<'_>, log_id: &log_utils::IdChain<u64>) -> Status;
-
-    /// Resolve the username associated with an authentication source, if known.
-    /// Used to label per-client metrics. Returns `None` by default
-    fn username(&self, _source: &Source<'_>) -> Option<String> {
-        None
-    }
 }
 
 impl Source<'_> {
