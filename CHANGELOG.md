@@ -8,6 +8,14 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 ### Added
 
+- [Feature] Optional per-user metrics behind the `per_client_metrics` metrics
+  config flag (default `false`). When enabled, `/metrics` additionally exposes
+  `client_sessions_per_user`, `inbound_traffic_bytes_per_user`, and
+  `outbound_traffic_bytes_per_user` labelled with the authenticated `username`,
+  and a new `/clients` JSON endpoint reports per-user aggregates (sessions,
+  traffic, IP). Aggregate metrics are unchanged. Exposes usernames and client
+  IPs, so only enable it on a protected metrics listener.
+
 ### Changed
 
 ### Deprecated
