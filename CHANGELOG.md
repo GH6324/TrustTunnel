@@ -18,6 +18,8 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 ### Changed
 
+- The released version is now derived from the git tag instead of a hardcoded value; `trusttunnel_endpoint --version` reports the version of the tag it was built from.
+
 ### Deprecated
 
 ### Removed
