@@ -167,7 +167,6 @@ jobs:
               --passphrase "${GPG_PASSWORD}" --pinentry-mode loopback \
               setup_wizard
 
-          cp LICENSE .
           tar zcf "${NAME}.tar.gz" -s ",^,${NAME}/," \
             trusttunnel_endpoint trusttunnel_endpoint.sig \
             setup_wizard setup_wizard.sig LICENSE
