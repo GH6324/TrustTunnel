@@ -609,10 +609,7 @@ output_dir=''
 verbose='1'
 cpu=''
 os=''
-# No hardcoded version default: the version is taken from the script name
-# (e.g. trusttunnel-v1.0.42-install.sh) or the -V flag. A bare install.sh run
-# without either exits with "Version required".
-version=''
+version='1.1.0'
 uninstall='0'
 remove_command="rm -f"
 is_root='0'
